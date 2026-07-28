@@ -279,6 +279,6 @@ function App() {
     );
 }
 
-// mount the whole app into <div id="root"> from index.html
-const root = ReactDOM.createRoot(document.getElementById("root"));
+// mount the whole app into <div id="app-mount"> from index.html
+const root = ReactDOM.createRoot(document.getElementById("app-mount"));
 root.render(<App />);
