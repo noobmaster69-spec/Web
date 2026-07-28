@@ -1,5 +1,4 @@
 // Test case: "network calls"
-// Ganti ENDPOINT ini ke Express + ngrok URL kamu untuk test end-to-end.
 const { useState, useEffect } = React;
 const ENDPOINT = "https://jsonplaceholder.typicode.com/posts?_limit=3";
 
