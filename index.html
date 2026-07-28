@@ -69,12 +69,16 @@
 
       // fetches a JSX source file, transforms it with the standalone
       // compiler (already loaded by this point), then injects and
-      // executes the compiled output as a real <script>
+      // executes the compiled output as a real <script>.
+      // runtime: "classic" avoids Babel's automatic-JSX-runtime mode,
+      // which would otherwise inject `import` statements into the
+      // output — those break because this is a plain classic script,
+      // not type="module".
       function loadJSX(src) {
         return fetch(src)
           .then(function (res) { return res.text(); })
           .then(function (code) {
-            var compiled = Babel.transform(code, { presets: ["react"] }).code;
+            var compiled = Babel.transform(code, { presets: [["react", { runtime: "classic" }]] }).code;
             var s = document.createElement("script");
             s.text = compiled;
             document.head.appendChild(s);
