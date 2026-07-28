@@ -70,17 +70,22 @@
       // fetches a JSX source file, transforms it with the standalone
       // compiler (already loaded by this point), then injects and
       // executes the compiled output as a real <script>.
-      // runtime: "classic" avoids Babel's automatic-JSX-runtime mode,
-      // which would otherwise inject `import` statements into the
-      // output — those break because this is a plain classic script,
-      // not type="module".
+      // - runtime: "classic" avoids Babel's automatic-JSX-runtime mode,
+      //   which would otherwise inject `import` statements into the
+      //   output — those break because this is a plain classic script,
+      //   not type="module".
+      // - wrapping in an IIFE gives this file's top-level const/let
+      //   bindings (e.g. "const { useState } = React;") their own
+      //   function scope, so they don't collide with the same names
+      //   declared by other dynamically-injected component scripts.
       function loadJSX(src) {
         return fetch(src)
           .then(function (res) { return res.text(); })
           .then(function (code) {
             var compiled = Babel.transform(code, { presets: [["react", { runtime: "classic" }]] }).code;
+            var wrapped = "(function () {\n" + compiled + "\n})();";
             var s = document.createElement("script");
-            s.text = compiled;
+            s.text = wrapped;
             document.head.appendChild(s);
           });
       }
