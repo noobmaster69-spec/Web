@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>scrape-bench · latihan_1</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ============================================================
+       TRUE CURL-VISIBLE FIXTURE
+       This block is plain HTML sitting outside the React root, so
+       it is present in the raw response `curl` (or any HTTP client
+       that doesn't execute JS) receives. This is test case #01's
+       real target — the "StaticContent" React panel is only a
+       cosmetic mirror of the same data for when you're looking at
+       the rendered page in a browser.
+       ============================================================ -->
+  <div id="curl-fixture" style="display:none">
+    <div class="product" data-name="iPhone 17 128GB" data-price="Rp 14.999.000"></div>
+    <div class="product" data-name="iPhone 17 Pro 256GB" data-price="Rp 21.499.000"></div>
+    <div class="product" data-name="iPhone 17 Pro Max 512GB" data-price="Rp 27.999.000"></div>
+  </div>
+
+  <div id="root"></div>
+
+  <!-- React + Babel standalone (CDN, no build step — matches the
+       single-file learning approach already in use) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- shared globals, loaded first, plain JS -->
+  <script src="shared.js"></script>
+
+  <!-- one file per test case — drop/remove any of these independently -->
+  <script type="text/babel" src="components/StaticContent.js"></script>
+  <script type="text/babel" src="components/JsRenderedContent.js"></script>
+  <script type="text/babel" src="components/DelayedContent.js"></script>
+  <script type="text/babel" src="components/ScrollLazyLoad.js"></script>
+  <script type="text/babel" src="components/CookieDemo.js"></script>
+  <script type="text/babel" src="components/NetworkCallDemo.js"></script>
+  <script type="text/babel" src="components/AssetsDemo.js"></script>
+  <script type="text/babel" src="components/PromptInjectionHidden.js"></script>
+  <script type="text/babel" src="components/CaptchaBlock.js"></script>
+  <script type="text/babel" src="components/LoadMoreDemo.js"></script>
+  <script type="text/babel" src="components/PaginationDemo.js"></script>
+  <script type="text/babel" src="components/LiveCounter.js"></script>
+  <script type="text/babel" src="components/CreepJsDemo.js"></script>
+
+  <!-- App.js must load LAST — it reads window.ScrapeBenchComponents -->
+  <script type="text/babel" src="App.js"></script>
+
+</body>
+</html>
