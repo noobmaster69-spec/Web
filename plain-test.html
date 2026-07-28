@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>plain-test</title>
+</head>
+<body>
+
+  <!-- This div is 100% empty in the raw HTML. No framework, no build
+       step, no Babel, no React — nothing. Just a plain <div>. -->
+  <div id="result">EMPTY_BEFORE_JS</div>
+
+  <!-- This is the ONLY script on the page. It's plain vanilla
+       JavaScript with zero dependencies. It changes the div's text
+       the instant it runs. -->
+  <script>
+    document.getElementById("result").textContent = "FILLED_BY_JAVASCRIPT";
+  </script>
+
+</body>
+</html>
