@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,47 +10,114 @@
 
   <!-- ============================================================
        TRUE CURL-VISIBLE FIXTURE
-       This block is plain HTML sitting outside the React root, so
-       it is present in the raw response `curl` (or any HTTP client
-       that doesn't execute JS) receives. This is test case #01's
-       real target — the "StaticContent" React panel is only a
-       cosmetic mirror of the same data for when you're looking at
-       the rendered page in a browser.
+       Plain HTML outside the app mount point — present in the raw
+       response any HTTP client (curl, a scraper with JS off) receives.
+       This is test case #01's real target.
        ============================================================ -->
   <div id="curl-fixture" style="display:none">
-    <div class="product" data-name="iPhone 17 128GB" data-price="Rp 14.999.000"></div>
-    <div class="product" data-name="iPhone 17 Pro 256GB" data-price="Rp 21.499.000"></div>
-    <div class="product" data-name="iPhone 17 Pro Max 512GB" data-price="Rp 27.999.000"></div>
+    <div class="product" data-name="iPhone 17 128GB" data-price="$999"></div>
+    <div class="product" data-name="iPhone 17 Pro 256GB" data-price="$1,299"></div>
+    <div class="product" data-name="iPhone 17 Pro Max 512GB" data-price="$1,599"></div>
   </div>
 
-  <div id="root"></div>
+  <!-- ============================================================
+       STATIC FILLER TEXT
+       Genuine, plain, human-readable content that exists in the raw
+       HTML with no JavaScript involved — so a scraper doesn't see a
+       near-empty <body> and infer "this must be an SPA that needs
+       rendering." Keeps the true-raw-HTML response non-trivial in
+       size and content, on purpose.
+       ============================================================ -->
+  <noscript>
+    <p>This page requires JavaScript to display the scrape-bench test dashboard.</p>
+  </noscript>
+  <p id="static-note" style="max-width:640px;margin:60px auto;padding:0 20px;color:#6E7681;font-family:sans-serif;font-size:14px;line-height:1.6;">
+    scrape-bench is a set of test fixtures for benchmarking web scraping tools —
+    covering static HTML, delayed content, cookies, network calls, anti-bot walls,
+    pagination, and more. The interactive dashboard below is built and populated
+    entirely at runtime.
+  </p>
 
-  <!-- React + Babel standalone (CDN, no build step — matches the
-       single-file learning approach already in use) -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- app mount point — deliberately NOT named "root" and not left
+       conspicuously empty next to obvious framework <script> tags -->
+  <div id="app-mount"></div>
 
-  <!-- shared globals, loaded first, plain JS -->
-  <script src="shared.js"></script>
+  <!-- ============================================================
+       BOOTSTRAP — the ONLY <script> tag present in the raw HTML.
+       No react/react-dom/babel URLs appear as literal text (they're
+       base64-encoded below and decoded at runtime), and no
+       <script type="text/babel" src="components/..."> tags exist in
+       the static markup — everything is fetched, transformed, and
+       injected dynamically after this script runs. A naive scan of
+       the raw HTML source won't find framework fingerprints; only
+       an engine that actually executes this script will build the
+       dashboard.
+       ============================================================ -->
+  <script>
+    (function () {
+      function decode(b64) { return atob(b64); }
 
-  <!-- one file per test case — drop/remove any of these independently -->
-  <script type="text/babel" src="components/StaticContent.js"></script>
-  <script type="text/babel" src="components/JsRenderedContent.js"></script>
-  <script type="text/babel" src="components/DelayedContent.js"></script>
-  <script type="text/babel" src="components/ScrollLazyLoad.js"></script>
-  <script type="text/babel" src="components/CookieDemo.js"></script>
-  <script type="text/babel" src="components/NetworkCallDemo.js"></script>
-  <script type="text/babel" src="components/AssetsDemo.js"></script>
-  <script type="text/babel" src="components/PromptInjectionHidden.js"></script>
-  <script type="text/babel" src="components/CaptchaBlock.js"></script>
-  <script type="text/babel" src="components/LoadMoreDemo.js"></script>
-  <script type="text/babel" src="components/PaginationDemo.js"></script>
-  <script type="text/babel" src="components/LiveCounter.js"></script>
-  <script type="text/babel" src="components/CreepJsDemo.js"></script>
+      function loadPlain(src) {
+        return new Promise(function (resolve, reject) {
+          var s = document.createElement("script");
+          s.src = src;
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
 
-  <!-- App.js must load LAST — it reads window.ScrapeBenchComponents -->
-  <script type="text/babel" src="App.js"></script>
+      // fetches a JSX source file, transforms it with the standalone
+      // compiler (already loaded by this point), then injects and
+      // executes the compiled output as a real <script>
+      function loadJSX(src) {
+        return fetch(src)
+          .then(function (res) { return res.text(); })
+          .then(function (code) {
+            var compiled = Babel.transform(code, { presets: ["react"] }).code;
+            var s = document.createElement("script");
+            s.text = compiled;
+            document.head.appendChild(s);
+          });
+      }
+
+      var REACT_URL = decode("aHR0cHM6Ly91bnBrZy5jb20vcmVhY3RAMTgvdW1kL3JlYWN0LnByb2R1Y3Rpb24ubWluLmpz");
+      var REACT_DOM_URL = decode("aHR0cHM6Ly91bnBrZy5jb20vcmVhY3QtZG9tQDE4L3VtZC9yZWFjdC1kb20ucHJvZHVjdGlvbi5taW4uanM=");
+      var BABEL_URL = decode("aHR0cHM6Ly91bnBrZy5jb20vQGJhYmVsL3N0YW5kYWxvbmUvYmFiZWwubWluLmpz");
+
+      var COMPONENTS = [
+        "components/StaticContent.js",
+        "components/JsRenderedContent.js",
+        "components/DelayedContent.js",
+        "components/ScrollLazyLoad.js",
+        "components/CookieDemo.js",
+        "components/NetworkCallDemo.js",
+        "components/AssetsDemo.js",
+        "components/PromptInjectionHidden.js",
+        "components/CaptchaBlock.js",
+        "components/LoadMoreDemo.js",
+        "components/PaginationDemo.js",
+        "components/LiveCounter.js",
+        "components/CreepJsDemo.js"
+      ];
+
+      // load core libs in order, then shared.js, then every component
+      // (sequentially, so each has React/Babel ready), then App.js last
+      loadPlain(REACT_URL)
+        .then(function () { return loadPlain(REACT_DOM_URL); })
+        .then(function () { return loadPlain(BABEL_URL); })
+        .then(function () { return loadPlain("shared.js"); })
+        .then(function () {
+          return COMPONENTS.reduce(function (chain, src) {
+            return chain.then(function () { return loadJSX(src); });
+          }, Promise.resolve());
+        })
+        .then(function () { return loadJSX("App.js"); })
+        .catch(function (err) {
+          console.error("scrape-bench bootstrap failed:", err);
+        });
+    })();
+  </script>
 
 </body>
 </html>
