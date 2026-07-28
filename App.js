@@ -1,6 +1,3 @@
-// const root = ReactDOM.createRoot(document.getElementById("root"));
-//root.render(<App />);
-
 // ============================================================
 // App.js — loads LAST (after shared.js and every file in components/).
 // This file wires all the individual test-case components together
