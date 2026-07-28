@@ -7,27 +7,11 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-
-  <!-- ============================================================
-       TRUE CURL-VISIBLE FIXTURE
-       Plain HTML outside the app mount point — present in the raw
-       response any HTTP client (curl, a scraper with JS off) receives.
-       This is test case #01's real target.
-       ============================================================ -->
   <div id="curl-fixture" style="display:none">
     <div class="product" data-name="iPhone 17 128GB" data-price="$999"></div>
     <div class="product" data-name="iPhone 17 Pro 256GB" data-price="$1,299"></div>
     <div class="product" data-name="iPhone 17 Pro Max 512GB" data-price="$1,599"></div>
   </div>
-
-  <!-- ============================================================
-       STATIC FILLER TEXT
-       Genuine, plain, human-readable content that exists in the raw
-       HTML with no JavaScript involved — so a scraper doesn't see a
-       near-empty <body> and infer "this must be an SPA that needs
-       rendering." Keeps the true-raw-HTML response non-trivial in
-       size and content, on purpose.
-       ============================================================ -->
   <noscript>
     <p>This page requires JavaScript to display the scrape-bench test dashboard.</p>
   </noscript>
@@ -37,11 +21,7 @@
     pagination, and more. The interactive dashboard below is built and populated
     entirely at runtime.
   </p>
-
-  <!-- app mount point — deliberately NOT named "root" and not left
-       conspicuously empty next to obvious framework <script> tags -->
   <div id="app-mount"></div>
-
   <!-- ============================================================
        BOOTSTRAP — the ONLY <script> tag present in the raw HTML.
        No react/react-dom/babel URLs appear as literal text (they're
@@ -66,7 +46,6 @@
           document.head.appendChild(s);
         });
       }
-
       // fetches a JSX source file, transforms it with the standalone
       // compiler (already loaded by this point), then injects and
       // executes the compiled output as a real <script>.
