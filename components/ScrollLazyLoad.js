@@ -110,10 +110,6 @@ function generateBatch(page, batchIndex) {
         encodeItem(buildRawItem(batchStart + i))
     );
 }
-
-// Each cell watches itself against the REAL page viewport (root: null),
-// not a bounded parent box — so it only decodes/reveals once it's
-// actually been scrolled into view on the page itself.
 function LazyCell({ index, encoded }) {
     const cellRef = useRef(null);
     const [data, setData] = useState(null);
@@ -212,10 +208,6 @@ function ScrollLazyLoad() {
     const canLoadMore = loadMoreClicks < MAX_LOAD_MORE_CLICKS;
     const canGoPrevious = page > 1;
     const canGoNext = page < MAX_PAGE;
-
-    // NOTE: no ".panel" wrapper, no bordered/boxed container. This
-    // renders straight into the normal page flow — the grid below is
-    // just regular content on the page, not a self-contained widget.
     return (
         <div>
             <p className="case-meta" style={{ marginBottom: 12 }}>
