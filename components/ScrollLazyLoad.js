@@ -2,8 +2,6 @@
 // #lazy-target baru terisi saat sentinel masuk viewport (IntersectionObserver).
 // Sebelum trigger: DOM benar-benar kosong dari data (cuma skeleton placeholder).
 const { useState, useEffect, useRef } = React;
-
-// Generate 30 produk — array of objects, dipisah dari layout
 const lazyProducts = Array.from({ length: 30 }, (_, i) => ({
     id: `lazy-item-${i + 1}`,
     name: `iPhone 17 · lazy card #${i + 1}`,
@@ -84,10 +82,7 @@ function ScrollLazyLoad() {
                     )}
                 </div>
 
-                <div style={{ height: 300 }} />
-            </div>
-            <div className="hint">
-                30 produk baru muncul di grid 3×10 setelah scroll sampai sentinel.
+                <div style={{ height: 200 }} />
             </div>
         </div>
     );
