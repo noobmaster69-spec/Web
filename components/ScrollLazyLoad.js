@@ -11,69 +11,373 @@ const ITEMS_PER_PAGE = TOTAL_ITEMS / MAX_PAGE;
 const MAX_LOAD_MORE_CLICKS = ITEMS_PER_PAGE / ITEMS_PER_BATCH - 1; 
 
 const RAW_PRODUCT_DATA = [
-    { name: "iPhone 17", storage: "128GB", color: "Black", price: "Rp 16.299.000" },
-    { name: "iPhone 17", storage: "256GB", color: "Black", price: "Rp 18.799.000" },
-    { name: "iPhone 17", storage: "512GB", color: "Black", price: "Rp 22.799.000" },
-    { name: "iPhone 17", storage: "128GB", color: "White", price: "Rp 16.299.000" },
-    { name: "iPhone 17", storage: "256GB", color: "White", price: "Rp 18.799.000" },
-    { name: "iPhone 17", storage: "512GB", color: "White", price: "Rp 22.799.000" },
-    { name: "iPhone 17 Plus", storage: "128GB", color: "Black", price: "Rp 18.299.000" },
-    { name: "iPhone 17 Plus", storage: "256GB", color: "Black", price: "Rp 20.799.000" },
-    { name: "iPhone 17 Plus", storage: "512GB", color: "Black", price: "Rp 24.799.000" },
-    { name: "iPhone 17 Plus", storage: "128GB", color: "Blue", price: "Rp 18.299.000" },
-    { name: "iPhone 17 Plus", storage: "256GB", color: "Blue", price: "Rp 20.799.000" },
-    { name: "iPhone 17 Plus", storage: "512GB", color: "Blue", price: "Rp 24.799.000" },
-    { name: "iPhone 17 Pro", storage: "256GB", color: "Titanium Blue", price: "Rp 24.499.000" },
-    { name: "iPhone 17 Pro", storage: "512GB", color: "Titanium Blue", price: "Rp 28.499.000" },
-    { name: "iPhone 17 Pro", storage: "1TB", color: "Titanium Blue", price: "Rp 32.499.000" },
-    { name: "iPhone 17 Pro", storage: "256GB", color: "Titanium Gray", price: "Rp 24.499.000" },
-    { name: "iPhone 17 Pro", storage: "512GB", color: "Titanium Gray", price: "Rp 28.499.000" },
-    { name: "iPhone 17 Pro", storage: "1TB", color: "Titanium Gray", price: "Rp 32.499.000" },
-    { name: "iPhone 17 Pro Max", storage: "256GB", color: "Titanium Black", price: "Rp 27.999.000" },
-    { name: "iPhone 17 Pro Max", storage: "512GB", color: "Titanium Black", price: "Rp 31.999.000" },
-    { name: "iPhone 17 Pro Max", storage: "1TB", color: "Titanium Black", price: "Rp 35.999.000" },
-    { name: "iPhone 17 Pro Max", storage: "2TB", color: "Titanium Black", price: "Rp 41.999.000" },
-    { name: "iPhone 17 Pro Max", storage: "256GB", color: "Titanium White", price: "Rp 27.999.000" },
-    { name: "iPhone 17 Pro Max", storage: "512GB", color: "Titanium White", price: "Rp 31.999.000" },
-    { name: "iPhone 17 mini", storage: "128GB", color: "Black", price: "Rp 13.299.000" },
-    { name: "iPhone 17 mini", storage: "256GB", color: "Black", price: "Rp 15.299.000" },
-    { name: "iPhone 17 mini", storage: "512GB", color: "Black", price: "Rp 19.299.000" },
-    { name: "iPhone 17 mini", storage: "128GB", color: "Pink", price: "Rp 13.299.000" },
-    { name: "iPhone 17 mini", storage: "256GB", color: "Pink", price: "Rp 15.299.000" },
-    { name: "iPhone 17 mini", storage: "512GB", color: "Pink", price: "Rp 19.299.000" },
-    { name: "iPhone 17e", storage: "128GB", color: "Black", price: "Rp 10.299.000" },
-    { name: "iPhone 17e", storage: "256GB", color: "Black", price: "Rp 12.299.000" },
-    { name: "iPhone 17e", storage: "128GB", color: "White", price: "Rp 10.299.000" },
-    { name: "iPhone 17e", storage: "256GB", color: "White", price: "Rp 12.299.000" },
-    { name: "iPhone 17e", storage: "128GB", color: "Red", price: "Rp 10.299.000" },
-    { name: "iPhone 17e", storage: "256GB", color: "Red", price: "Rp 12.299.000" },
-    { name: "iPhone 16", storage: "128GB", color: "Black", price: "Rp 11.999.000" },
-    { name: "iPhone 16", storage: "256GB", color: "Black", price: "Rp 13.999.000" },
-    { name: "iPhone 16", storage: "512GB", color: "Black", price: "Rp 17.999.000" },
-    { name: "iPhone 16", storage: "128GB", color: "Teal", price: "Rp 11.999.000" },
-    { name: "iPhone 16 Plus", storage: "128GB", color: "Black", price: "Rp 13.699.000" },
-    { name: "iPhone 16 Plus", storage: "256GB", color: "Black", price: "Rp 15.699.000" },
-    { name: "iPhone 16 Plus", storage: "512GB", color: "Black", price: "Rp 19.699.000" },
-    { name: "iPhone 16 Plus", storage: "128GB", color: "Ultramarine", price: "Rp 13.699.000" },
-    { name: "iPhone 16 Pro", storage: "128GB", color: "Titanium Natural", price: "Rp 19.999.000" },
-    { name: "iPhone 16 Pro", storage: "256GB", color: "Titanium Natural", price: "Rp 21.999.000" },
-    { name: "iPhone 16 Pro", storage: "512GB", color: "Titanium Natural", price: "Rp 25.999.000" },
-    { name: "iPhone 16 Pro", storage: "128GB", color: "Titanium Desert", price: "Rp 19.999.000" },
-    { name: "iPhone 16 Pro Max", storage: "256GB", color: "Titanium Black", price: "Rp 23.999.000" },
-    { name: "iPhone 16 Pro Max", storage: "512GB", color: "Titanium Black", price: "Rp 27.999.000" },
-    { name: "iPhone 16 Pro Max", storage: "1TB", color: "Titanium Black", price: "Rp 31.999.000" },
-    { name: "iPhone 16e", storage: "128GB", color: "Black", price: "Rp 8.999.000" },
-    { name: "iPhone 16e", storage: "256GB", color: "Black", price: "Rp 10.999.000" },
-    { name: "iPhone 15", storage: "128GB", color: "Black", price: "Rp 9.999.000" },
-    { name: "iPhone 15", storage: "256GB", color: "Black", price: "Rp 11.999.000" },
-    { name: "iPhone 15 Plus", storage: "128GB", color: "Blue", price: "Rp 11.499.000" },
-    { name: "iPhone 15 Pro", storage: "256GB", color: "Titanium Blue", price: "Rp 18.499.000" },
-    { name: "iPhone 15 Pro Max", storage: "256GB", color: "Titanium Black", price: "Rp 21.499.000" },
-    { name: "iPhone 14", storage: "128GB", color: "Midnight", price: "Rp 8.499.000" },
-    { name: "iPhone 14 Plus", storage: "128GB", color: "Starlight", price: "Rp 9.499.000" },
-    { name: "iPhone 13", storage: "128GB", color: "Pink", price: "Rp 7.499.000" }
+    {
+        name: "iPhone 17",
+        storage: "128GB",
+        color: "Black",
+        price: "Rp 16.299.000"
+    },
+    {
+        name: "iPhone 17",
+        storage: "256GB",
+        color: "Black",
+        price: "Rp 18.799.000"
+    },
+    {
+        name: "iPhone 17",
+        storage: "512GB",
+        color: "Black",
+        price: "Rp 22.799.000"
+    },
+    {
+        name: "iPhone 17",
+        storage: "128GB",
+        color: "White",
+        price: "Rp 16.299.000"
+    },
+    {
+        name: "iPhone 17",
+        storage: "256GB",
+        color: "White",
+        price: "Rp 18.799.000"
+    },
+    {
+        name: "iPhone 17",
+        storage: "512GB",
+        color: "White",
+        price: "Rp 22.799.000"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "128GB",
+        color: "Black",
+        price: "Rp 18.299.000"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "256GB",
+        color: "Black",
+        price: "Rp 20.799.000"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "512GB",
+        color: "Black",
+        price: "Rp 24.799.000"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "128GB",
+        color: "Blue",
+        price: "Rp 18.299.000"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "256GB",
+        color: "Blue",
+        price: "Rp 20.799.000"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "512GB",
+        color: "Blue",
+        price: "Rp 24.799.000"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "256GB",
+        color: "Titanium Blue",
+        price: "Rp 24.499.000"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "512GB",
+        color: "Titanium Blue",
+        price: "Rp 28.499.000"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "1TB",
+        color: "Titanium Blue",
+        price: "Rp 32.499.000"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "256GB",
+        color: "Titanium Gray",
+        price: "Rp 24.499.000"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "512GB",
+        color: "Titanium Gray",
+        price: "Rp 28.499.000"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "1TB",
+        color: "Titanium Gray",
+        price: "Rp 32.499.000"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "256GB",
+        color: "Titanium Black",
+        price: "Rp 27.999.000"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "512GB",
+        color: "Titanium Black",
+        price: "Rp 31.999.000"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "1TB",
+        color: "Titanium Black",
+        price: "Rp 35.999.000"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "2TB",
+        color: "Titanium Black",
+        price: "Rp 41.999.000"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "256GB",
+        color: "Titanium White",
+        price: "Rp 27.999.000"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "512GB",
+        color: "Titanium White",
+        price: "Rp 31.999.000"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "128GB",
+        color: "Black",
+        price: "Rp 13.299.000"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "256GB",
+        color: "Black",
+        price: "Rp 15.299.000"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "512GB",
+        color: "Black",
+        price: "Rp 19.299.000"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "128GB",
+        color: "Pink",
+        price: "Rp 13.299.000"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "256GB",
+        color: "Pink",
+        price: "Rp 15.299.000"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "512GB",
+        color: "Pink",
+        price: "Rp 19.299.000"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "128GB",
+        color: "Black",
+        price: "Rp 10.299.000"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "256GB",
+        color: "Black",
+        price: "Rp 12.299.000"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "128GB",
+        color: "White",
+        price: "Rp 10.299.000"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "256GB",
+        color: "White",
+        price: "Rp 12.299.000"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "128GB",
+        color: "Red",
+        price: "Rp 10.299.000"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "256GB",
+        color: "Red",
+        price: "Rp 12.299.000"
+    },
+    {
+        name: "iPhone 16",
+        storage: "128GB",
+        color: "Black",
+        price: "Rp 11.999.000"
+    },
+    {
+        name: "iPhone 16",
+        storage: "256GB",
+        color: "Black",
+        price: "Rp 13.999.000"
+    },
+    {
+        name: "iPhone 16",
+        storage: "512GB",
+        color: "Black",
+        price: "Rp 17.999.000"
+    },
+    {
+        name: "iPhone 16",
+        storage: "128GB",
+        color: "Teal",
+        price: "Rp 11.999.000"
+    },
+    {
+        name: "iPhone 16 Plus",
+        storage: "128GB",
+        color: "Black",
+        price: "Rp 13.699.000"
+    },
+    {
+        name: "iPhone 16 Plus",
+        storage: "256GB",
+        color: "Black",
+        price: "Rp 15.699.000"
+    },
+    {
+        name: "iPhone 16 Plus",
+        storage: "512GB",
+        color: "Black",
+        price: "Rp 19.699.000"
+    },
+    {
+        name: "iPhone 16 Plus",
+        storage: "128GB",
+        color: "Ultramarine",
+        price: "Rp 13.699.000"
+    },
+    {
+        name: "iPhone 16 Pro",
+        storage: "128GB",
+        color: "Titanium Natural",
+        price: "Rp 19.999.000"
+    },
+    {
+        name: "iPhone 16 Pro",
+        storage: "256GB",
+        color: "Titanium Natural",
+        price: "Rp 21.999.000"
+    },
+    {
+        name: "iPhone 16 Pro",
+        storage: "512GB",
+        color: "Titanium Natural",
+        price: "Rp 25.999.000"
+    },
+    {
+        name: "iPhone 16 Pro",
+        storage: "128GB",
+        color: "Titanium Desert",
+        price: "Rp 19.999.000"
+    },
+    {
+        name: "iPhone 16 Pro Max",
+        storage: "256GB",
+        color: "Titanium Black",
+        price: "Rp 23.999.000"
+    },
+    {
+        name: "iPhone 16 Pro Max",
+        storage: "512GB",
+        color: "Titanium Black",
+        price: "Rp 27.999.000"
+    },
+    {
+        name: "iPhone 16 Pro Max",
+        storage: "1TB",
+        color: "Titanium Black",
+        price: "Rp 31.999.000"
+    },
+    {
+        name: "iPhone 16e",
+        storage: "128GB",
+        color: "Black",
+        price: "Rp 8.999.000"
+    },
+    {
+        name: "iPhone 16e",
+        storage: "256GB",
+        color: "Black",
+        price: "Rp 10.999.000"
+    },
+    {
+        name: "iPhone 15",
+        storage: "128GB",
+        color: "Black",
+        price: "Rp 9.999.000"
+    },
+    {
+        name: "iPhone 15",
+        storage: "256GB",
+        color: "Black",
+        price: "Rp 11.999.000"
+    },
+    {
+        name: "iPhone 15 Plus",
+        storage: "128GB",
+        color: "Blue",
+        price: "Rp 11.499.000"
+    },
+    {
+        name: "iPhone 15 Pro",
+        storage: "256GB",
+        color: "Titanium Blue",
+        price: "Rp 18.499.000"
+    },
+    {
+        name: "iPhone 15 Pro Max",
+        storage: "256GB",
+        color: "Titanium Black",
+        price: "Rp 21.499.000"
+    },
+    {
+        name: "iPhone 14",
+        storage: "128GB",
+        color: "Midnight",
+        price: "Rp 8.499.000"
+    },
+    {
+        name: "iPhone 14 Plus",
+        storage: "128GB",
+        color: "Starlight",
+        price: "Rp 9.499.000"
+    },
+    {
+        name: "iPhone 13",
+        storage: "128GB",
+        color: "Pink",
+        price: "Rp 7.499.000"
+    }
 ];
-
 function buildRawItem(index) {
     const base = RAW_PRODUCT_DATA[index];
     const page = Math.floor(index / ITEMS_PER_PAGE) + 1;
@@ -84,14 +388,12 @@ function buildRawItem(index) {
         page
     };
 }
-
 function encodeItem(obj) {
     return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
 }
 function decodeItem(encoded) {
     return JSON.parse(decodeURIComponent(escape(atob(encoded))));
 }
-
 function generateBatch(page, batchIndex) {
     const pageStart = (page - 1) * ITEMS_PER_PAGE;
     const batchStart = pageStart + batchIndex * ITEMS_PER_BATCH;
@@ -99,17 +401,14 @@ function generateBatch(page, batchIndex) {
         encodeItem(buildRawItem(batchStart + i))
     );
 }
-
 function LazyCell({ index, encoded, trackRef }) {
     const cellRef = useRef(null);
     const [data, setData] = useState(null);
-
     useEffect(() => {
         if (!cellRef.current || !trackRef.current) return;
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
-                    // threshold 1.0 -> baru trigger kalau elemen 100% kelihatan penuh
                     if (entry.isIntersecting && entry.intersectionRatio >= 1 && !data) {
                         setData(decodeItem(encoded));
                         window.ScrapeBenchConsole.log({
@@ -126,7 +425,6 @@ function LazyCell({ index, encoded, trackRef }) {
         observer.observe(cellRef.current);
         return () => observer.disconnect();
     }, [data, encoded, index, trackRef]);
-
     if (!data) {
         return (
             <div ref={cellRef} className="skeleton" style={{ height: 80, width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -134,7 +432,6 @@ function LazyCell({ index, encoded, trackRef }) {
             </div>
         );
     }
-
     return (
         <div ref={cellRef} id={data.id} className="product-card">
             <div className="name">{data.name}</div>
@@ -142,7 +439,6 @@ function LazyCell({ index, encoded, trackRef }) {
         </div>
     );
 }
-
 function ScrollLazyLoad() {
     const trackRef = useRef(null);
 
@@ -161,7 +457,6 @@ function ScrollLazyLoad() {
         setLoadMoreClicks(0);
         if (trackRef.current) trackRef.current.scrollTop = 0;
     }, [page]);
-
     const handleLoadMore = useCallback(() => {
         setLoadMoreClicks((prev) => {
             const next = prev + 1;
