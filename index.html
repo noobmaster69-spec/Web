@@ -8,26 +8,12 @@
 </head>
 <body>
 
-  <!-- ============================================================
-       TRUE CURL-VISIBLE FIXTURE
-       Plain HTML outside the app mount point — present in the raw
-       response any HTTP client (curl, a scraper with JS off) receives.
-       This is test case #01's real target.
-       ============================================================ -->
   <div id="curl-fixture" style="display:none">
     <div class="product" data-name="iPhone 17 128GB" data-price="$999"></div>
     <div class="product" data-name="iPhone 17 Pro 256GB" data-price="$1,299"></div>
     <div class="product" data-name="iPhone 17 Pro Max 512GB" data-price="$1,599"></div>
   </div>
 
-  <!-- ============================================================
-       STATIC FILLER TEXT
-       Genuine, plain, human-readable content that exists in the raw
-       HTML with no JavaScript involved — so a scraper doesn't see a
-       near-empty <body> and infer "this must be an SPA that needs
-       rendering." Keeps the true-raw-HTML response non-trivial in
-       size and content, on purpose.
-       ============================================================ -->
   <noscript>
     <p>This page requires JavaScript to display the scrape-bench test dashboard.</p>
   </noscript>
@@ -41,18 +27,6 @@
   <!-- app mount point — deliberately NOT named "root" and not left
        conspicuously empty next to obvious framework <script> tags -->
   <div id="app-mount"></div>
-
-  <!-- ============================================================
-       BOOTSTRAP — the ONLY <script> tag present in the raw HTML.
-       No react/react-dom/babel URLs appear as literal text (they're
-       base64-encoded below and decoded at runtime), and no
-       <script type="text/babel" src="components/..."> tags exist in
-       the static markup — everything is fetched, transformed, and
-       injected dynamically after this script runs. A naive scan of
-       the raw HTML source won't find framework fingerprints; only
-       an engine that actually executes this script will build the
-       dashboard.
-       ============================================================ -->
   <script>
     (function () {
       function decode(b64) { return atob(b64); }
@@ -67,17 +41,6 @@
         });
       }
 
-      // fetches a JSX source file, transforms it with the standalone
-      // compiler (already loaded by this point), then injects and
-      // executes the compiled output as a real <script>.
-      // - runtime: "classic" avoids Babel's automatic-JSX-runtime mode,
-      //   which would otherwise inject `import` statements into the
-      //   output — those break because this is a plain classic script,
-      //   not type="module".
-      // - wrapping in an IIFE gives this file's top-level const/let
-      //   bindings (e.g. "const { useState } = React;") their own
-      //   function scope, so they don't collide with the same names
-      //   declared by other dynamically-injected component scripts.
       function loadJSX(src) {
         return fetch(src)
           .then(function (res) { return res.text(); })
@@ -109,7 +72,6 @@
         "components/LiveCounter.js",
         "components/ScrollLazyLoad.js",
       ];
-
       // load core libs in order, then shared.js, then every component
       // (sequentially, so each has React/Babel ready), then App.js last
       loadPlain(REACT_URL)
