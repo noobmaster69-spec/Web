@@ -48,7 +48,7 @@ const CASES = [
         key: "delayed",
         title: "Delayed selector",
         chip: "warn",
-        chipText: "wait ~4s",
+        chipText: "wait ~30s",
         desc: "Target element does not exist until several seconds after load — tests wait_for_selector handling.",
         getComponent: () => window.ScrapeBenchComponents.DelayedContent
     },
@@ -210,7 +210,7 @@ function App() {
                 </ul>
             </nav>
 
-            {/* ---- main content: short intro, then every test case stacked vertically ---- */}
+            {/* ---- main content: short intro then every test cases stacked vertically ---- */}
             <main className="main">
                 <div className="page-intro">
                     <p className="case-meta">scrape-bench · all test cases on one page</p>
