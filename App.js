@@ -53,7 +53,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.DelayedContent
     },
     {
-        id: "04",
+        id: "11",
         key: "scroll-lazy",
         title: "Scroll-triggered lazy load",
         chip: "info",
@@ -62,7 +62,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.ScrollLazyLoad
     },
     {
-        id: "05",
+        id: "04",
         key: "cookie",
         title: "Cookies",
         chip: "info",
@@ -71,7 +71,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.CookieDemo
     },
     {
-        id: "06",
+        id: "05",
         key: "network",
         title: "Network calls",
         chip: "info",
@@ -80,7 +80,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.NetworkCallDemo
     },
     {
-        id: "07",
+        id: "06",
         key: "assets",
         title: "Images, fonts, stylesheets",
         chip: "ok",
@@ -89,7 +89,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.AssetsDemo
     },
     {
-        id: "08",
+        id: "07",
         key: "prompt-injection",
         title: "Non-rendered prompt injection",
         chip: "danger",
@@ -98,7 +98,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.PromptInjectionHidden
     },
     {
-        id: "09",
+        id: "08",
         key: "captcha",
         title: "Captcha / blocking keyword",
         chip: "danger",
@@ -107,7 +107,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.CaptchaBlock
     },
     {
-        id: "10",
+        id: "12",
         key: "load-more",
         title: "Load more button",
         chip: "info",
@@ -116,7 +116,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.LoadMoreDemo
     },
     {
-        id: "11",
+        id: "13",
         key: "pagination",
         title: "Next button / pagination",
         chip: "info",
@@ -125,7 +125,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.PaginationDemo
     },
     {
-        id: "12",
+        id: "09",
         key: "live-counter",
         title: "Live-updating data",
         chip: "warn",
@@ -134,14 +134,14 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.LiveCounter
     },
     {
-        id: "13",
+        id: "10",
         key: "creepjs",
         title: "creep.js fingerprint probe",
         chip: "danger",
         chipText: "external",
         desc: "Embeds the community creep.js report to compare automation detectability against a normal browser.",
         getComponent: () => window.ScrapeBenchComponents.CreepJsDemo
-    }
+    },
 ];
 
 // ------------------------------------------------------------
