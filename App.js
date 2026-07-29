@@ -1,573 +1,295 @@
-// Test case: "scroll-triggered lazy load + load more + pagination (prev/next)"
-// Unlike a self-contained widget in its own boxed panel, this renders
-// directly into the page's normal document flow — no bordered box, no
-// inner mini-scrollbox. Items sit right in the page like regular
-// content, and lazy-loading is driven by scrolling the ACTUAL page
-// (IntersectionObserver root: null / the real viewport), not a small
-// isolated <div> with its own overflow-y. A scraper has to genuinely
-// scroll the whole document to trigger loading — there's no separate
-// "test widget" boundary to special-case.
+// ============================================================
+// App.js — loads LAST (after shared.js and every file in components/).
+// This file wires all the individual test-case components together
+// into ONE continuously-scrollable page (like a product catalog),
+// instead of a click-through tab view. Every fixture is mounted at
+// once, so a single fetch/render of this page exercises all 13
+// scraping scenarios in one pass.
 //
-// Total data: 60 items across 3 pages (20 items/page).
-// Each page: initial batch of 5 items, then "Load more" can be
-// clicked 3x (+5 items each) until 20 items are showing.
-// Pagination caps at page 3 (Next disappears on the last page).
-const { useState, useEffect, useRef, useCallback } = React;
+// NOTE: the "scroll-lazy" case (#11) is special — instead of being
+// rendered as one contiguous <CaseSection>, its pieces (Intro / four
+// product-batch segments / Controls) are threaded in between the
+// OTHER cases below, so the content actually mixes into the page
+// flow instead of sitting isolated in its own box. All the pieces
+// still share one state via <ScrollLazyLoad.Provider>.
+// ============================================================
 
-const ITEMS_PER_BATCH = 5;
-const MAX_PAGE = 3;
-const TOTAL_ITEMS = 60;
-const ITEMS_PER_PAGE = TOTAL_ITEMS / MAX_PAGE;
-const MAX_LOAD_MORE_CLICKS = ITEMS_PER_PAGE / ITEMS_PER_BATCH - 1;
+const { useState, useEffect, useRef } = React;
 
-const RAW_PRODUCT_DATA = [
+// ------------------------------------------------------------
+// CASES — metadata for every test case. This does NOT contain the
+// actual component logic (that lives in components/*.js) — it just
+// describes each case for the sidebar + section header, and points
+// to the matching component via getComponent().
+//   id         -> shown as the case number (e.g. "01")
+//   key        -> unique slug, used for the section's HTML id
+//   title      -> heading shown in the sidebar + section header
+//   chip       -> color of the small status badge (ok/info/warn/danger)
+//   chipText   -> text shown inside that badge
+//   desc       -> one-line explanation shown under the section title
+//   getComponent -> returns the actual React component to render,
+//                   pulled from window.ScrapeBenchComponents (set by
+//                   each file in components/ when it loads)
+// ------------------------------------------------------------
+const CASES = [
     {
-        name: "iPhone 17",
-        storage: "128GB",
-        color: "Black",
-        price: "$999"
+        id: "01",
+        key: "static",
+        title: "Static HTML (curl)",
+        chip: "ok",
+        chipText: "no-js",
+        desc: "Content present in the raw HTML response — no JavaScript execution required to read it.",
+        getComponent: () => window.ScrapeBenchComponents.StaticContent
     },
     {
-        name: "iPhone 17",
-        storage: "256GB",
-        color: "Black",
-        price: "$1,149"
+        id: "02",
+        key: "js-rendered",
+        title: "JS-rendered content",
+        chip: "info",
+        chipText: "needs js",
+        desc: "Container is empty on load; content is injected entirely by client-side JavaScript after mount.",
+        getComponent: () => window.ScrapeBenchComponents.JsRenderedContent
     },
     {
-        name: "iPhone 17",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,399"
+        id: "03",
+        key: "delayed",
+        title: "Delayed selector",
+        chip: "warn",
+        chipText: "wait ~30s",
+        desc: "Target element does not exist until several seconds after load — tests wait_for_selector handling.",
+        getComponent: () => window.ScrapeBenchComponents.DelayedContent
     },
     {
-        name: "iPhone 17",
-        storage: "128GB",
-        color: "White",
-        price: "$999"
+        id: "04",
+        key: "cookie",
+        title: "Cookies",
+        chip: "info",
+        chipText: "session",
+        desc: "Sets a session cookie and gates a content block behind its presence.",
+        getComponent: () => window.ScrapeBenchComponents.CookieDemo
     },
     {
-        name: "iPhone 17",
-        storage: "256GB",
-        color: "White",
-        price: "$1,149"
+        id: "05",
+        key: "network",
+        title: "Network calls",
+        chip: "info",
+        chipText: "fetch",
+        desc: "Content depends on a live fetch()/XHR round trip completing after page load.",
+        getComponent: () => window.ScrapeBenchComponents.NetworkCallDemo
     },
     {
-        name: "iPhone 17",
-        storage: "512GB",
-        color: "White",
-        price: "$1,399"
+        id: "06",
+        key: "assets",
+        title: "Images, fonts, stylesheets",
+        chip: "ok",
+        chipText: "sub-resources",
+        desc: "Checks that remote images, a web font, and CSS-driven visuals all load correctly.",
+        getComponent: () => window.ScrapeBenchComponents.AssetsDemo
     },
     {
-        name: "iPhone 17 Plus",
-        storage: "128GB",
-        color: "Black",
-        price: "$1,119"
+        id: "07",
+        key: "prompt-injection",
+        title: "Non-rendered prompt injection",
+        chip: "danger",
+        chipText: "hidden dom",
+        desc: "A DOM node with text content that is never visible to a human — checks whether your AI summarizer ingests hidden text.",
+        getComponent: () => window.ScrapeBenchComponents.PromptInjectionHidden
     },
     {
-        name: "iPhone 17 Plus",
-        storage: "256GB",
-        color: "Black",
-        price: "$1,269"
+        id: "08",
+        key: "captcha",
+        title: "Captcha / blocking keyword",
+        chip: "danger",
+        chipText: "anti-bot",
+        desc: "A layered wall (checkbox → random puzzle type → lockout on repeat failure) that persists across reloads — checks that your pipeline detects and backs off instead of trying to solve it.",
+        getComponent: () => window.ScrapeBenchComponents.CaptchaBlock
     },
     {
-        name: "iPhone 17 Plus",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,519"
+        id: "09",
+        key: "live-counter",
+        title: "Live-updating data",
+        chip: "warn",
+        chipText: "ticks 1/s",
+        desc: "A value that changes every second — checks your pipeline treats volatility as expected, not a data mismatch.",
+        getComponent: () => window.ScrapeBenchComponents.LiveCounter
     },
     {
-        name: "iPhone 17 Plus",
-        storage: "128GB",
-        color: "Blue",
-        price: "$1,119"
+        id: "10",
+        key: "creepjs",
+        title: "creep.js fingerprint probe",
+        chip: "danger",
+        chipText: "external",
+        desc: "Embeds the community creep.js report to compare automation detectability against a normal browser.",
+        getComponent: () => window.ScrapeBenchComponents.CreepJsDemo
     },
     {
-        name: "iPhone 17 Plus",
-        storage: "256GB",
-        color: "Blue",
-        price: "$1,269"
-    },
-    {
-        name: "iPhone 17 Plus",
-        storage: "512GB",
-        color: "Blue",
-        price: "$1,519"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "256GB",
-        color: "Titanium Blue",
-        price: "$1,499"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "512GB",
-        color: "Titanium Blue",
-        price: "$1,749"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "1TB",
-        color: "Titanium Blue",
-        price: "$1,999"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "256GB",
-        color: "Titanium Gray",
-        price: "$1,499"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "512GB",
-        color: "Titanium Gray",
-        price: "$1,749"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "1TB",
-        color: "Titanium Gray",
-        price: "$1,999"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "256GB",
-        color: "Titanium Black",
-        price: "$1,699"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "512GB",
-        color: "Titanium Black",
-        price: "$1,949"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "1TB",
-        color: "Titanium Black",
-        price: "$2,199"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "2TB",
-        color: "Titanium Black",
-        price: "$2,549"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "256GB",
-        color: "Titanium White",
-        price: "$1,699"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "512GB",
-        color: "Titanium White",
-        price: "$1,949"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "128GB",
-        color: "Black",
-        price: "$809"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "256GB",
-        color: "Black",
-        price: "$929"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,169"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "128GB",
-        color: "Pink",
-        price: "$809"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "256GB",
-        color: "Pink",
-        price: "$929"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "512GB",
-        color: "Pink",
-        price: "$1,169"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "128GB",
-        color: "Black",
-        price: "$629"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "256GB",
-        color: "Black",
-        price: "$749"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "128GB",
-        color: "White",
-        price: "$629"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "256GB",
-        color: "White",
-        price: "$749"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "128GB",
-        color: "Red",
-        price: "$629"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "256GB",
-        color: "Red",
-        price: "$749"
-    },
-    {
-        name: "iPhone 16",
-        storage: "128GB",
-        color: "Black",
-        price: "$729"
-    },
-    {
-        name: "iPhone 16",
-        storage: "256GB",
-        color: "Black",
-        price: "$849"
-    },
-    {
-        name: "iPhone 16",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,089"
-    },
-    {
-        name: "iPhone 16",
-        storage: "128GB",
-        color: "Teal",
-        price: "$729"
-    },
-    {
-        name: "iPhone 16 Plus",
-        storage: "128GB",
-        color: "Black",
-        price: "$829"
-    },
-    {
-        name: "iPhone 16 Plus",
-        storage: "256GB",
-        color: "Black",
-        price: "$949"
-    },
-    {
-        name: "iPhone 16 Plus",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,189"
-    },
-    {
-        name: "iPhone 16 Plus",
-        storage: "128GB",
-        color: "Ultramarine",
-        price: "$829"
-    },
-    {
-        name: "iPhone 16 Pro",
-        storage: "128GB",
-        color: "Titanium Natural",
-        price: "$1,209"
-    },
-    {
-        name: "iPhone 16 Pro",
-        storage: "256GB",
-        color: "Titanium Natural",
-        price: "$1,329"
-    },
-    {
-        name: "iPhone 16 Pro",
-        storage: "512GB",
-        color: "Titanium Natural",
-        price: "$1,569"
-    },
-    {
-        name: "iPhone 16 Pro",
-        storage: "128GB",
-        color: "Titanium Desert",
-        price: "$1,209"
-    },
-    {
-        name: "iPhone 16 Pro Max",
-        storage: "256GB",
-        color: "Titanium Black",
-        price: "$1,449"
-    },
-    {
-        name: "iPhone 16 Pro Max",
-        storage: "512GB",
-        color: "Titanium Black",
-        price: "$1,689"
-    },
-    {
-        name: "iPhone 16 Pro Max",
-        storage: "1TB",
-        color: "Titanium Black",
-        price: "$1,929"
-    },
-    {
-        name: "iPhone 16e",
-        storage: "128GB",
-        color: "Black",
-        price: "$549"
-    },
-    {
-        name: "iPhone 16e",
-        storage: "256GB",
-        color: "Black",
-        price: "$669"
-    },
-    {
-        name: "iPhone 15",
-        storage: "128GB",
-        color: "Black",
-        price: "$609"
-    },
-    {
-        name: "iPhone 15",
-        storage: "256GB",
-        color: "Black",
-        price: "$729"
-    },
-    {
-        name: "iPhone 15 Plus",
-        storage: "128GB",
-        color: "Blue",
-        price: "$699"
-    },
-    {
-        name: "iPhone 15 Pro",
-        storage: "256GB",
-        color: "Titanium Blue",
-        price: "$1,129"
-    },
-    {
-        name: "iPhone 15 Pro Max",
-        storage: "256GB",
-        color: "Titanium Black",
-        price: "$1,309"
-    },
-    {
-        name: "iPhone 14",
-        storage: "128GB",
-        color: "Midnight",
-        price: "$519"
-    },
-    {
-        name: "iPhone 14 Plus",
-        storage: "128GB",
-        color: "Starlight",
-        price: "$579"
-    },
-    {
-        name: "iPhone 13",
-        storage: "128GB",
-        color: "Pink",
-        price: "$459"
+        id: "11",
+        key: "scroll-lazy",
+        title: "Scroll-triggered lazy load",
+        chip: "info",
+        chipText: "needs scroll",
+        desc: "Content only renders once its container is scrolled into view (IntersectionObserver). Spread across this page rather than boxed in one section.",
+        getComponent: () => null // handled specially in App() below, not via CaseSection
     }
 ];
 
-function buildRawItem(index) {
-    const base = RAW_PRODUCT_DATA[index];
-    const page = Math.floor(index / ITEMS_PER_PAGE) + 1;
-    return {
-        id: `item-${index + 1}`,
-        name: `${base.name} · ${base.storage} · ${base.color}`,
-        price: base.price,
-        page
-    };
-}
 
-function encodeItem(obj) {
-    return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-}
-
-function decodeItem(encoded) {
-    return JSON.parse(decodeURIComponent(escape(atob(encoded))));
-}
-
-function generateBatch(page, batchIndex) {
-    const pageStart = (page - 1) * ITEMS_PER_PAGE;
-    const batchStart = pageStart + batchIndex * ITEMS_PER_BATCH;
-    return Array.from({ length: ITEMS_PER_BATCH }, (_, i) =>
-        encodeItem(buildRawItem(batchStart + i))
-    );
-}
-function LazyCell({ index, encoded }) {
-    const cellRef = useRef(null);
-    const [data, setData] = useState(null);
-
+function ConsoleLog() {
+    const [rows, setRows] = useState([]);
+    const bottomRef = useRef(null);
     useEffect(() => {
-        if (!cellRef.current) return;
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting && !data) {
-                        setData(decodeItem(encoded));
-                        window.ScrapeBenchConsole.log({
-                            method: "EVT",
-                            text: `/case/scroll-lazy — item #${index + 1} scrolled into the real page viewport & decoded`,
-                            status: "ok",
-                            isEvent: true
-                        });
-                    }
-                });
-            },
-            { root: null, threshold: 0.4 } // root: null = the actual page/document viewport
-        );
-        observer.observe(cellRef.current);
-        return () => observer.disconnect();
-    }, [data, encoded, index]);
-
-    if (!data) {
-        return (
-            <div ref={cellRef} className="skeleton" style={{ height: 80, width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 12, opacity: 0.6 }}>Loading…</span>
-            </div>
-        );
-    }
-    return (
-        <div ref={cellRef} id={data.id} className="product-card">
-            <div className="name">{data.name}</div>
-            <div className="price">{data.price}</div>
-        </div>
-    );
-}
-
-function ScrollLazyLoad() {
-    const getPageFromUrl = () => {
-        const params = new URLSearchParams(window.location.search);
-        const p = parseInt(params.get("page"), 10);
-        return Number.isFinite(p) && p >= 1 && p <= MAX_PAGE ? p : 1;
-    };
-
-    const [page, setPage] = useState(getPageFromUrl);
-    const [loadMoreClicks, setLoadMoreClicks] = useState(0);
-    const [batches, setBatches] = useState(() => [generateBatch(getPageFromUrl(), 0)]);
-
-    useEffect(() => {
-        setBatches([generateBatch(page, 0)]);
-        setLoadMoreClicks(0);
-    }, [page]);
-
-    const handleLoadMore = useCallback(() => {
-        setLoadMoreClicks((prev) => {
-            const next = prev + 1;
-            setBatches((b) => [...b, generateBatch(page, next)]);
-            window.ScrapeBenchConsole.log({
-                method: "EVT",
-                text: `/case/load-more — batch ${next + 1} added (page ${page})`,
-                status: "ok",
-                isEvent: true
-            });
-            return next;
+        const unsubscribe = window.ScrapeBenchConsole.subscribe((entry) => {
+            setRows((prev) => [...prev.slice(-49), entry]); // keep only the last 50 rows
         });
-    }, [page]);
-
-    const goToPage = useCallback((targetPage, direction) => {
-        if (targetPage < 1 || targetPage > MAX_PAGE) return;
-        const params = new URLSearchParams(window.location.search);
-        params.set("page", String(targetPage));
-        const newUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
-        window.history.pushState({ page: targetPage }, "", newUrl);
-        setPage(targetPage);
-        window.ScrapeBenchConsole.log({
-            method: "EVT",
-            text: `/case/pagination — ${direction} to page ${targetPage}, URL updated`,
-            status: "ok",
-            isEvent: true
-        });
+        return unsubscribe; // clean up the subscription if this ever unmounts
     }, []);
-
-    const handleNext = useCallback(() => goToPage(page + 1, "next"), [page, goToPage]);
-    const handlePrevious = useCallback(() => goToPage(page - 1, "previous"), [page, goToPage]);
-
+    // whenever rows changes, scroll the console panel to the newest entry
     useEffect(() => {
-        const onPopState = () => setPage(getPageFromUrl());
-        window.addEventListener("popstate", onPopState);
-        return () => window.removeEventListener("popstate", onPopState);
-    }, []);
+        if (bottomRef.current) bottomRef.current.scrollIntoView({ block: "end" });
+    }, [rows]);
 
-    const canLoadMore = loadMoreClicks < MAX_LOAD_MORE_CLICKS;
-    const canGoPrevious = page > 1;
-    const canGoNext = page < MAX_PAGE;
     return (
-        <div>
-            <p className="case-meta" style={{ marginBottom: 12 }}>
-                lazy load → load more → pagination (page {page}/{MAX_PAGE})
-            </p>
-
-            {batches.map((batch, batchIndex) => (
-                <div
-                    key={`${page}-${batchIndex}`}
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, 1fr)",
-                        gap: "12px",
-                        marginBottom: "12px"
-                    }}
-                >
-                    {batch.map((encoded, i) => (
-                        <LazyCell
-                            key={i}
-                            index={batchIndex * ITEMS_PER_BATCH + i}
-                            encoded={encoded}
-                        />
-                    ))}
+        <div className="console">
+            {rows.length === 0 && (
+                <div className="console-row">
+                    <span className="t">—</span>waiting for activity…
+                </div>
+            )}
+            {rows.map((r, i) => (
+                <div className={`console-row${r.isEvent ? " evt" : ""}`} key={i}>
+                    <span className="t">{r.time.toLocaleTimeString("en-US")}</span>
+                    <span className="method">{r.method}</span>
+                    <span className={r.status === "ok" ? "status-ok" : r.status === "bad" ? "status-bad" : ""}>{r.text}</span>
                 </div>
             ))}
-
-            <div style={{ display: "flex", justifyContent: "center", gap: "12px", padding: "16px 0" }}>
-                {canLoadMore ? (
-                    <button className="btn" onClick={handleLoadMore}>
-                        Load more ({loadMoreClicks}/{MAX_LOAD_MORE_CLICKS})
-                    </button>
-                ) : (
-                    <>
-                        {canGoPrevious && (
-                            <button className="btn" onClick={handlePrevious}>
-                                ← Previous
-                            </button>
-                        )}
-                        {canGoNext && (
-                            <button className="btn" onClick={handleNext}>
-                                Next →
-                            </button>
-                        )}
-                    </>
-                )}
-            </div>
-
-            <div className="hint">
-                {ITEMS_PER_BATCH} items are lazy-loaded per real page scroll (no inner scrollbox — this uses the
-                actual document viewport as the trigger). "Load more" can be clicked {MAX_LOAD_MORE_CLICKS} times
-                (total {ITEMS_PER_PAGE} items per page), after which it becomes "Previous"/"Next" to switch pages
-                via the URL <code>?page=</code>. {TOTAL_ITEMS} items total across {MAX_PAGE} pages.
-            </div>
+            <div ref={bottomRef} />
         </div>
     );
 }
 
-window.ScrapeBenchComponents.ScrollLazyLoad = ScrollLazyLoad;
+function CaseSection({ item }) {
+    const Component = item.getComponent();
+    return (
+        <section id={`case-${item.key}`} className="case-section">
+            <div className="case-header">
+                <div>
+                    <p className="case-meta">case #{item.id} — {item.key}</p>
+                    <h2>{item.title}</h2>
+                </div>
+                <span className={`chip ${item.chip}`}>{item.chipText}</span>
+            </div>
+            <p className="case-desc">{item.desc}</p>
+            {Component ? (
+                // Component was found on window.ScrapeBenchComponents — render it
+                <Component />
+            ) : (
+                // Component was NOT found — usually means its <script> tag is
+                // missing/misordered in index.html, or the file 404'd
+                <div className="chip danger">component failed to load — check script order in index.html</div>
+            )}
+        </section>
+    );
+}
+
+// A thin wrapper section for a piece of the scroll-lazy fixture, so it
+// keeps the same "case-section" spacing/styling as the other cases even
+// though it's just a fragment (intro / one batch / controls) rather than
+// a full case.
+function ScrollLazyFragment({ children }) {
+    return <section className="case-section">{children}</section>;
+}
+
+function App() {
+    function jumpTo(key) {
+        const el = document.getElementById(`case-${key}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    const byKey = (key) => CASES.find((c) => c.key === key);
+    const ScrollLazy = window.ScrapeBenchComponents.ScrollLazyLoad;
+
+    return (
+        <div className="shell">
+            {/* ---- sidebar: brand + quick-jump links, no active/selected state anymore ---- */}
+            <nav className="sidebar">
+                <div className="brand">
+                    <h1><span className="dot">● </span>scrape-bench</h1>
+                    <p>latihan_1 · MrScraper test fixtures</p>
+                </div>
+                <div className="nav-group-label">13 test cases — jump to</div>
+                <ul className="nav-list">
+                    {CASES.map((c) => (
+                        <li key={c.key}>
+                            <button className="nav-item" onClick={() => jumpTo(c.key)}>
+                                <span className="id mono">{c.id}</span>
+                                <span>{c.title}</span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </nav>
+
+            {/* ---- main content: intro, then every case, with the scroll-lazy
+                 fixture's pieces threaded in between the others instead of
+                 sitting in one block ---- */}
+            <main className="main">
+                <div className="page-intro">
+                    <p className="case-meta">scrape-bench · all test cases on one page</p>
+                    <h2>13 scraping test fixtures</h2>
+                    <p className="case-desc">
+                        Every fixture below is mounted at once, so a single fetch/render of this page exercises
+                        all 13 scenarios in one pass — static HTML, JS rendering, delays, scroll triggers, cookies,
+                        network calls, assets, hidden prompt injection, anti-bot walls, load-more/pagination,
+                        live-updating data, and a fingerprint probe. Scroll down or use the sidebar to jump to a section.
+                    </p>
+                </div>
+
+                <ScrollLazy.Provider>
+                    <CaseSection item={byKey("static")} />
+                    <CaseSection item={byKey("js-rendered")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Intro />
+                        <ScrollLazy.Batch batchIndex={0} />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("delayed")} />
+                    <CaseSection item={byKey("cookie")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Batch batchIndex={1} />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("network")} />
+                    <CaseSection item={byKey("assets")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Batch batchIndex={2} />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("prompt-injection")} />
+                    <CaseSection item={byKey("captcha")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Batch batchIndex={3} />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("live-counter")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Controls />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("creepjs")} />
+                </ScrollLazy.Provider>
+            </main>
+
+            {/* ---- fixed console panel at the bottom, shared across all sections ---- */}
+            <ConsoleLog />
+        </div>
+    );
+}
+
+// mount the whole app into <div id="app-mount"> from index.html
+const root = ReactDOM.createRoot(document.getElementById("app-mount"));
+root.render(<App />);
