@@ -1,12 +1,16 @@
 // Test case: "scroll-triggered lazy load + load more + pagination (prev/next)"
-// Unlike a self-contained widget in its own boxed panel, this renders
-// directly into the page's normal document flow — no bordered box, no
-// inner mini-scrollbox. Items sit right in the page like regular
-// content, and lazy-loading is driven by scrolling the ACTUAL page
-// (IntersectionObserver root: null / the real viewport), not a small
-// isolated <div> with its own overflow-y. A scraper has to genuinely
-// scroll the whole document to trigger loading — there's no separate
-// "test widget" boundary to special-case.
+// Renders directly into the page's normal document flow — no bordered
+// box, no inner mini-scrollbox — so it visually blends with the rest
+// of the page rather than sitting in its own isolated widget.
+//
+// Items genuinely below the fold only reveal their data once
+// scrolled into the real page viewport (IntersectionObserver,
+// root: null) — a scraper has to actually scroll down to reach them,
+// same as a real user would. Items already visible on initial load
+// (like the first batch, sitting at the very top of the page) decode
+// immediately via a synchronous check, so there's no false-negative
+// timing race against the observer's async callback. "Load more" and
+// pagination (Prev/Next via the URL) work as before.
 //
 // Total data: 60 items across 3 pages (20 items/page).
 // Each page: initial batch of 5 items, then "Load more" can be
@@ -21,372 +25,67 @@ const ITEMS_PER_PAGE = TOTAL_ITEMS / MAX_PAGE;
 const MAX_LOAD_MORE_CLICKS = ITEMS_PER_PAGE / ITEMS_PER_BATCH - 1;
 
 const RAW_PRODUCT_DATA = [
-    {
-        name: "iPhone 17",
-        storage: "128GB",
-        color: "Black",
-        price: "$999"
-    },
-    {
-        name: "iPhone 17",
-        storage: "256GB",
-        color: "Black",
-        price: "$1,149"
-    },
-    {
-        name: "iPhone 17",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,399"
-    },
-    {
-        name: "iPhone 17",
-        storage: "128GB",
-        color: "White",
-        price: "$999"
-    },
-    {
-        name: "iPhone 17",
-        storage: "256GB",
-        color: "White",
-        price: "$1,149"
-    },
-    {
-        name: "iPhone 17",
-        storage: "512GB",
-        color: "White",
-        price: "$1,399"
-    },
-    {
-        name: "iPhone 17 Plus",
-        storage: "128GB",
-        color: "Black",
-        price: "$1,119"
-    },
-    {
-        name: "iPhone 17 Plus",
-        storage: "256GB",
-        color: "Black",
-        price: "$1,269"
-    },
-    {
-        name: "iPhone 17 Plus",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,519"
-    },
-    {
-        name: "iPhone 17 Plus",
-        storage: "128GB",
-        color: "Blue",
-        price: "$1,119"
-    },
-    {
-        name: "iPhone 17 Plus",
-        storage: "256GB",
-        color: "Blue",
-        price: "$1,269"
-    },
-    {
-        name: "iPhone 17 Plus",
-        storage: "512GB",
-        color: "Blue",
-        price: "$1,519"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "256GB",
-        color: "Titanium Blue",
-        price: "$1,499"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "512GB",
-        color: "Titanium Blue",
-        price: "$1,749"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "1TB",
-        color: "Titanium Blue",
-        price: "$1,999"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "256GB",
-        color: "Titanium Gray",
-        price: "$1,499"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "512GB",
-        color: "Titanium Gray",
-        price: "$1,749"
-    },
-    {
-        name: "iPhone 17 Pro",
-        storage: "1TB",
-        color: "Titanium Gray",
-        price: "$1,999"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "256GB",
-        color: "Titanium Black",
-        price: "$1,699"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "512GB",
-        color: "Titanium Black",
-        price: "$1,949"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "1TB",
-        color: "Titanium Black",
-        price: "$2,199"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "2TB",
-        color: "Titanium Black",
-        price: "$2,549"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "256GB",
-        color: "Titanium White",
-        price: "$1,699"
-    },
-    {
-        name: "iPhone 17 Pro Max",
-        storage: "512GB",
-        color: "Titanium White",
-        price: "$1,949"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "128GB",
-        color: "Black",
-        price: "$809"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "256GB",
-        color: "Black",
-        price: "$929"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,169"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "128GB",
-        color: "Pink",
-        price: "$809"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "256GB",
-        color: "Pink",
-        price: "$929"
-    },
-    {
-        name: "iPhone 17 mini",
-        storage: "512GB",
-        color: "Pink",
-        price: "$1,169"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "128GB",
-        color: "Black",
-        price: "$629"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "256GB",
-        color: "Black",
-        price: "$749"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "128GB",
-        color: "White",
-        price: "$629"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "256GB",
-        color: "White",
-        price: "$749"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "128GB",
-        color: "Red",
-        price: "$629"
-    },
-    {
-        name: "iPhone 17e",
-        storage: "256GB",
-        color: "Red",
-        price: "$749"
-    },
-    {
-        name: "iPhone 16",
-        storage: "128GB",
-        color: "Black",
-        price: "$729"
-    },
-    {
-        name: "iPhone 16",
-        storage: "256GB",
-        color: "Black",
-        price: "$849"
-    },
-    {
-        name: "iPhone 16",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,089"
-    },
-    {
-        name: "iPhone 16",
-        storage: "128GB",
-        color: "Teal",
-        price: "$729"
-    },
-    {
-        name: "iPhone 16 Plus",
-        storage: "128GB",
-        color: "Black",
-        price: "$829"
-    },
-    {
-        name: "iPhone 16 Plus",
-        storage: "256GB",
-        color: "Black",
-        price: "$949"
-    },
-    {
-        name: "iPhone 16 Plus",
-        storage: "512GB",
-        color: "Black",
-        price: "$1,189"
-    },
-    {
-        name: "iPhone 16 Plus",
-        storage: "128GB",
-        color: "Ultramarine",
-        price: "$829"
-    },
-    {
-        name: "iPhone 16 Pro",
-        storage: "128GB",
-        color: "Titanium Natural",
-        price: "$1,209"
-    },
-    {
-        name: "iPhone 16 Pro",
-        storage: "256GB",
-        color: "Titanium Natural",
-        price: "$1,329"
-    },
-    {
-        name: "iPhone 16 Pro",
-        storage: "512GB",
-        color: "Titanium Natural",
-        price: "$1,569"
-    },
-    {
-        name: "iPhone 16 Pro",
-        storage: "128GB",
-        color: "Titanium Desert",
-        price: "$1,209"
-    },
-    {
-        name: "iPhone 16 Pro Max",
-        storage: "256GB",
-        color: "Titanium Black",
-        price: "$1,449"
-    },
-    {
-        name: "iPhone 16 Pro Max",
-        storage: "512GB",
-        color: "Titanium Black",
-        price: "$1,689"
-    },
-    {
-        name: "iPhone 16 Pro Max",
-        storage: "1TB",
-        color: "Titanium Black",
-        price: "$1,929"
-    },
-    {
-        name: "iPhone 16e",
-        storage: "128GB",
-        color: "Black",
-        price: "$549"
-    },
-    {
-        name: "iPhone 16e",
-        storage: "256GB",
-        color: "Black",
-        price: "$669"
-    },
-    {
-        name: "iPhone 15",
-        storage: "128GB",
-        color: "Black",
-        price: "$609"
-    },
-    {
-        name: "iPhone 15",
-        storage: "256GB",
-        color: "Black",
-        price: "$729"
-    },
-    {
-        name: "iPhone 15 Plus",
-        storage: "128GB",
-        color: "Blue",
-        price: "$699"
-    },
-    {
-        name: "iPhone 15 Pro",
-        storage: "256GB",
-        color: "Titanium Blue",
-        price: "$1,129"
-    },
-    {
-        name: "iPhone 15 Pro Max",
-        storage: "256GB",
-        color: "Titanium Black",
-        price: "$1,309"
-    },
-    {
-        name: "iPhone 14",
-        storage: "128GB",
-        color: "Midnight",
-        price: "$519"
-    },
-    {
-        name: "iPhone 14 Plus",
-        storage: "128GB",
-        color: "Starlight",
-        price: "$579"
-    },
-    {
-        name: "iPhone 13",
-        storage: "128GB",
-        color: "Pink",
-        price: "$459"
-    }
+    { name: "iPhone 17", storage: "128GB", color: "Black", price: "$999" },
+    { name: "iPhone 17", storage: "256GB", color: "Black", price: "$1,149" },
+    { name: "iPhone 17", storage: "512GB", color: "Black", price: "$1,399" },
+    { name: "iPhone 17", storage: "128GB", color: "White", price: "$999" },
+    { name: "iPhone 17", storage: "256GB", color: "White", price: "$1,149" },
+    { name: "iPhone 17", storage: "512GB", color: "White", price: "$1,399" },
+    { name: "iPhone 17 Plus", storage: "128GB", color: "Black", price: "$1,119" },
+    { name: "iPhone 17 Plus", storage: "256GB", color: "Black", price: "$1,269" },
+    { name: "iPhone 17 Plus", storage: "512GB", color: "Black", price: "$1,519" },
+    { name: "iPhone 17 Plus", storage: "128GB", color: "Blue", price: "$1,119" },
+    { name: "iPhone 17 Plus", storage: "256GB", color: "Blue", price: "$1,269" },
+    { name: "iPhone 17 Plus", storage: "512GB", color: "Blue", price: "$1,519" },
+    { name: "iPhone 17 Pro", storage: "256GB", color: "Titanium Blue", price: "$1,499" },
+    { name: "iPhone 17 Pro", storage: "512GB", color: "Titanium Blue", price: "$1,749" },
+    { name: "iPhone 17 Pro", storage: "1TB", color: "Titanium Blue", price: "$1,999" },
+    { name: "iPhone 17 Pro", storage: "256GB", color: "Titanium Gray", price: "$1,499" },
+    { name: "iPhone 17 Pro", storage: "512GB", color: "Titanium Gray", price: "$1,749" },
+    { name: "iPhone 17 Pro", storage: "1TB", color: "Titanium Gray", price: "$1,999" },
+    { name: "iPhone 17 Pro Max", storage: "256GB", color: "Titanium Black", price: "$1,699" },
+    { name: "iPhone 17 Pro Max", storage: "512GB", color: "Titanium Black", price: "$1,949" },
+    { name: "iPhone 17 Pro Max", storage: "1TB", color: "Titanium Black", price: "$2,199" },
+    { name: "iPhone 17 Pro Max", storage: "2TB", color: "Titanium Black", price: "$2,549" },
+    { name: "iPhone 17 Pro Max", storage: "256GB", color: "Titanium White", price: "$1,699" },
+    { name: "iPhone 17 Pro Max", storage: "512GB", color: "Titanium White", price: "$1,949" },
+    { name: "iPhone 17 mini", storage: "128GB", color: "Black", price: "$809" },
+    { name: "iPhone 17 mini", storage: "256GB", color: "Black", price: "$929" },
+    { name: "iPhone 17 mini", storage: "512GB", color: "Black", price: "$1,169" },
+    { name: "iPhone 17 mini", storage: "128GB", color: "Pink", price: "$809" },
+    { name: "iPhone 17 mini", storage: "256GB", color: "Pink", price: "$929" },
+    { name: "iPhone 17 mini", storage: "512GB", color: "Pink", price: "$1,169" },
+    { name: "iPhone 17e", storage: "128GB", color: "Black", price: "$629" },
+    { name: "iPhone 17e", storage: "256GB", color: "Black", price: "$749" },
+    { name: "iPhone 17e", storage: "128GB", color: "White", price: "$629" },
+    { name: "iPhone 17e", storage: "256GB", color: "White", price: "$749" },
+    { name: "iPhone 17e", storage: "128GB", color: "Red", price: "$629" },
+    { name: "iPhone 17e", storage: "256GB", color: "Red", price: "$749" },
+    { name: "iPhone 16", storage: "128GB", color: "Black", price: "$729" },
+    { name: "iPhone 16", storage: "256GB", color: "Black", price: "$849" },
+    { name: "iPhone 16", storage: "512GB", color: "Black", price: "$1,089" },
+    { name: "iPhone 16", storage: "128GB", color: "Teal", price: "$729" },
+    { name: "iPhone 16 Plus", storage: "128GB", color: "Black", price: "$829" },
+    { name: "iPhone 16 Plus", storage: "256GB", color: "Black", price: "$949" },
+    { name: "iPhone 16 Plus", storage: "512GB", color: "Black", price: "$1,189" },
+    { name: "iPhone 16 Plus", storage: "128GB", color: "Ultramarine", price: "$829" },
+    { name: "iPhone 16 Pro", storage: "128GB", color: "Titanium Natural", price: "$1,209" },
+    { name: "iPhone 16 Pro", storage: "256GB", color: "Titanium Natural", price: "$1,329" },
+    { name: "iPhone 16 Pro", storage: "512GB", color: "Titanium Natural", price: "$1,569" },
+    { name: "iPhone 16 Pro", storage: "128GB", color: "Titanium Desert", price: "$1,209" },
+    { name: "iPhone 16 Pro Max", storage: "256GB", color: "Titanium Black", price: "$1,449" },
+    { name: "iPhone 16 Pro Max", storage: "512GB", color: "Titanium Black", price: "$1,689" },
+    { name: "iPhone 16 Pro Max", storage: "1TB", color: "Titanium Black", price: "$1,929" },
+    { name: "iPhone 16e", storage: "128GB", color: "Black", price: "$549" },
+    { name: "iPhone 16e", storage: "256GB", color: "Black", price: "$669" },
+    { name: "iPhone 15", storage: "128GB", color: "Black", price: "$609" },
+    { name: "iPhone 15", storage: "256GB", color: "Black", price: "$729" },
+    { name: "iPhone 15 Plus", storage: "128GB", color: "Blue", price: "$699" },
+    { name: "iPhone 15 Pro", storage: "256GB", color: "Titanium Blue", price: "$1,129" },
+    { name: "iPhone 15 Pro Max", storage: "256GB", color: "Titanium Black", price: "$1,309" },
+    { name: "iPhone 14", storage: "128GB", color: "Midnight", price: "$519" },
+    { name: "iPhone 14 Plus", storage: "128GB", color: "Starlight", price: "$579" },
+    { name: "iPhone 13", storage: "128GB", color: "Pink", price: "$459" }
 ];
 
 function buildRawItem(index) {
@@ -415,27 +114,45 @@ function generateBatch(page, batchIndex) {
         encodeItem(buildRawItem(batchStart + i))
     );
 }
+
 function LazyCell({ index, encoded }) {
     const cellRef = useRef(null);
     const [data, setData] = useState(null);
 
     useEffect(() => {
         if (!cellRef.current) return;
+
+        function reveal(reason) {
+            setData(decodeItem(encoded));
+            window.ScrapeBenchConsole.log({
+                method: "EVT",
+                text: `/case/scroll-lazy — item #${index + 1} ${reason} & decoded`,
+                status: "ok",
+                isEvent: true
+            });
+        }
+        // synchronous check first — catches anything already in the
+        // viewport on the very first paint, no async delay involved
+        const rect = cellRef.current.getBoundingClientRect();
+        const alreadyVisible =
+            rect.top < (window.innerHeight || document.documentElement.clientHeight) &&
+            rect.bottom > 0 &&
+            rect.left < (window.innerWidth || document.documentElement.clientWidth) &&
+            rect.right > 0;
+
+        if (alreadyVisible) {
+            reveal("was already in the initial viewport on mount");
+            return; 
+        }
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
                     if (entry.isIntersecting && !data) {
-                        setData(decodeItem(encoded));
-                        window.ScrapeBenchConsole.log({
-                            method: "EVT",
-                            text: `/case/scroll-lazy — item #${index + 1} scrolled into the real page viewport & decoded`,
-                            status: "ok",
-                            isEvent: true
-                        });
+                        reveal("scrolled into the real page viewport");
                     }
                 });
             },
-            { root: null, threshold: 0.4 } // root: null = the actual page/document viewport
+            { root: null, threshold: 0.4 } 
         );
         observer.observe(cellRef.current);
         return () => observer.disconnect();
@@ -561,10 +278,11 @@ function ScrollLazyLoad() {
             </div>
 
             <div className="hint">
-                {ITEMS_PER_BATCH} items are lazy-loaded per real page scroll (no inner scrollbox — this uses the
-                actual document viewport as the trigger). "Load more" can be clicked {MAX_LOAD_MORE_CLICKS} times
-                (total {ITEMS_PER_PAGE} items per page), after which it becomes "Previous"/"Next" to switch pages
-                via the URL <code>?page=</code>. {TOTAL_ITEMS} items total across {MAX_PAGE} pages.
+                Items already visible on load decode immediately; items further down only reveal their data once
+                genuinely scrolled into view (no inner scrollbox — this uses the real page viewport as the
+                trigger). "Load more" can be clicked {MAX_LOAD_MORE_CLICKS} times (total {ITEMS_PER_PAGE} items
+                per page), after which it becomes "Previous"/"Next" to switch pages via the URL <code>?page=</code>.
+                {TOTAL_ITEMS} items total across {MAX_PAGE} pages.
             </div>
         </div>
     );
