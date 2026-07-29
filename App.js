@@ -5,6 +5,13 @@
 // instead of a click-through tab view. Every fixture is mounted at
 // once, so a single fetch/render of this page exercises all 13
 // scraping scenarios in one pass.
+//
+// NOTE: the "scroll-lazy" case (#11) is special — instead of being
+// rendered as one contiguous <CaseSection>, its pieces (Intro / four
+// product-batch segments / Controls) are threaded in between the
+// OTHER cases below, so the content actually mixes into the page
+// flow instead of sitting isolated in its own box. All the pieces
+// still share one state via <ScrollLazyLoad.Provider>.
 // ============================================================
 
 const { useState, useEffect, useRef } = React;
@@ -121,8 +128,8 @@ const CASES = [
         title: "Scroll-triggered lazy load",
         chip: "info",
         chipText: "needs scroll",
-        desc: "Content only renders once its container is scrolled into view (IntersectionObserver).",
-        getComponent: () => window.ScrapeBenchComponents.ScrollLazyLoad
+        desc: "Content only renders once its container is scrolled into view (IntersectionObserver). Spread across this page rather than boxed in one section.",
+        getComponent: () => null // handled specially in App() below, not via CaseSection
     }
 ];
 
@@ -159,6 +166,7 @@ function ConsoleLog() {
         </div>
     );
 }
+
 function CaseSection({ item }) {
     const Component = item.getComponent();
     return (
@@ -183,11 +191,22 @@ function CaseSection({ item }) {
     );
 }
 
+// A thin wrapper section for a piece of the scroll-lazy fixture, so it
+// keeps the same "case-section" spacing/styling as the other cases even
+// though it's just a fragment (intro / one batch / controls) rather than
+// a full case.
+function ScrollLazyFragment({ children }) {
+    return <section className="case-section">{children}</section>;
+}
+
 function App() {
     function jumpTo(key) {
         const el = document.getElementById(`case-${key}`);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+
+    const byKey = (key) => CASES.find((c) => c.key === key);
+    const ScrollLazy = window.ScrapeBenchComponents.ScrollLazyLoad;
 
     return (
         <div className="shell">
@@ -210,7 +229,9 @@ function App() {
                 </ul>
             </nav>
 
-            {/* ---- main content: short intro then every test cases stacked vertically ---- */}
+            {/* ---- main content: intro, then every case, with the scroll-lazy
+                 fixture's pieces threaded in between the others instead of
+                 sitting in one block ---- */}
             <main className="main">
                 <div className="page-intro">
                     <p className="case-meta">scrape-bench · all test cases on one page</p>
@@ -222,10 +243,45 @@ function App() {
                         live-updating data, and a fingerprint probe. Scroll down or use the sidebar to jump to a section.
                     </p>
                 </div>
-                {/* one <CaseSection> per entry in CASES, in order */}
-                {CASES.map((item) => (
-                    <CaseSection key={item.key} item={item} />
-                ))}
+
+                <ScrollLazy.Provider>
+                    <CaseSection item={byKey("static")} />
+                    <CaseSection item={byKey("js-rendered")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Intro />
+                        <ScrollLazy.Batch batchIndex={0} />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("delayed")} />
+                    <CaseSection item={byKey("cookie")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Batch batchIndex={1} />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("network")} />
+                    <CaseSection item={byKey("assets")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Batch batchIndex={2} />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("prompt-injection")} />
+                    <CaseSection item={byKey("captcha")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Batch batchIndex={3} />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("live-counter")} />
+
+                    <ScrollLazyFragment>
+                        <ScrollLazy.Controls />
+                    </ScrollLazyFragment>
+
+                    <CaseSection item={byKey("creepjs")} />
+                </ScrollLazy.Provider>
             </main>
 
             {/* ---- fixed console panel at the bottom, shared across all sections ---- */}
