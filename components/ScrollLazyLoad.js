@@ -21,67 +21,372 @@ const ITEMS_PER_PAGE = TOTAL_ITEMS / MAX_PAGE;
 const MAX_LOAD_MORE_CLICKS = ITEMS_PER_PAGE / ITEMS_PER_BATCH - 1;
 
 const RAW_PRODUCT_DATA = [
-    { name: "iPhone 17", storage: "128GB", color: "Black", price: "$999" },
-    { name: "iPhone 17", storage: "256GB", color: "Black", price: "$1,149" },
-    { name: "iPhone 17", storage: "512GB", color: "Black", price: "$1,399" },
-    { name: "iPhone 17", storage: "128GB", color: "White", price: "$999" },
-    { name: "iPhone 17", storage: "256GB", color: "White", price: "$1,149" },
-    { name: "iPhone 17", storage: "512GB", color: "White", price: "$1,399" },
-    { name: "iPhone 17 Plus", storage: "128GB", color: "Black", price: "$1,119" },
-    { name: "iPhone 17 Plus", storage: "256GB", color: "Black", price: "$1,269" },
-    { name: "iPhone 17 Plus", storage: "512GB", color: "Black", price: "$1,519" },
-    { name: "iPhone 17 Plus", storage: "128GB", color: "Blue", price: "$1,119" },
-    { name: "iPhone 17 Plus", storage: "256GB", color: "Blue", price: "$1,269" },
-    { name: "iPhone 17 Plus", storage: "512GB", color: "Blue", price: "$1,519" },
-    { name: "iPhone 17 Pro", storage: "256GB", color: "Titanium Blue", price: "$1,499" },
-    { name: "iPhone 17 Pro", storage: "512GB", color: "Titanium Blue", price: "$1,749" },
-    { name: "iPhone 17 Pro", storage: "1TB", color: "Titanium Blue", price: "$1,999" },
-    { name: "iPhone 17 Pro", storage: "256GB", color: "Titanium Gray", price: "$1,499" },
-    { name: "iPhone 17 Pro", storage: "512GB", color: "Titanium Gray", price: "$1,749" },
-    { name: "iPhone 17 Pro", storage: "1TB", color: "Titanium Gray", price: "$1,999" },
-    { name: "iPhone 17 Pro Max", storage: "256GB", color: "Titanium Black", price: "$1,699" },
-    { name: "iPhone 17 Pro Max", storage: "512GB", color: "Titanium Black", price: "$1,949" },
-    { name: "iPhone 17 Pro Max", storage: "1TB", color: "Titanium Black", price: "$2,199" },
-    { name: "iPhone 17 Pro Max", storage: "2TB", color: "Titanium Black", price: "$2,549" },
-    { name: "iPhone 17 Pro Max", storage: "256GB", color: "Titanium White", price: "$1,699" },
-    { name: "iPhone 17 Pro Max", storage: "512GB", color: "Titanium White", price: "$1,949" },
-    { name: "iPhone 17 mini", storage: "128GB", color: "Black", price: "$809" },
-    { name: "iPhone 17 mini", storage: "256GB", color: "Black", price: "$929" },
-    { name: "iPhone 17 mini", storage: "512GB", color: "Black", price: "$1,169" },
-    { name: "iPhone 17 mini", storage: "128GB", color: "Pink", price: "$809" },
-    { name: "iPhone 17 mini", storage: "256GB", color: "Pink", price: "$929" },
-    { name: "iPhone 17 mini", storage: "512GB", color: "Pink", price: "$1,169" },
-    { name: "iPhone 17e", storage: "128GB", color: "Black", price: "$629" },
-    { name: "iPhone 17e", storage: "256GB", color: "Black", price: "$749" },
-    { name: "iPhone 17e", storage: "128GB", color: "White", price: "$629" },
-    { name: "iPhone 17e", storage: "256GB", color: "White", price: "$749" },
-    { name: "iPhone 17e", storage: "128GB", color: "Red", price: "$629" },
-    { name: "iPhone 17e", storage: "256GB", color: "Red", price: "$749" },
-    { name: "iPhone 16", storage: "128GB", color: "Black", price: "$729" },
-    { name: "iPhone 16", storage: "256GB", color: "Black", price: "$849" },
-    { name: "iPhone 16", storage: "512GB", color: "Black", price: "$1,089" },
-    { name: "iPhone 16", storage: "128GB", color: "Teal", price: "$729" },
-    { name: "iPhone 16 Plus", storage: "128GB", color: "Black", price: "$829" },
-    { name: "iPhone 16 Plus", storage: "256GB", color: "Black", price: "$949" },
-    { name: "iPhone 16 Plus", storage: "512GB", color: "Black", price: "$1,189" },
-    { name: "iPhone 16 Plus", storage: "128GB", color: "Ultramarine", price: "$829" },
-    { name: "iPhone 16 Pro", storage: "128GB", color: "Titanium Natural", price: "$1,209" },
-    { name: "iPhone 16 Pro", storage: "256GB", color: "Titanium Natural", price: "$1,329" },
-    { name: "iPhone 16 Pro", storage: "512GB", color: "Titanium Natural", price: "$1,569" },
-    { name: "iPhone 16 Pro", storage: "128GB", color: "Titanium Desert", price: "$1,209" },
-    { name: "iPhone 16 Pro Max", storage: "256GB", color: "Titanium Black", price: "$1,449" },
-    { name: "iPhone 16 Pro Max", storage: "512GB", color: "Titanium Black", price: "$1,689" },
-    { name: "iPhone 16 Pro Max", storage: "1TB", color: "Titanium Black", price: "$1,929" },
-    { name: "iPhone 16e", storage: "128GB", color: "Black", price: "$549" },
-    { name: "iPhone 16e", storage: "256GB", color: "Black", price: "$669" },
-    { name: "iPhone 15", storage: "128GB", color: "Black", price: "$609" },
-    { name: "iPhone 15", storage: "256GB", color: "Black", price: "$729" },
-    { name: "iPhone 15 Plus", storage: "128GB", color: "Blue", price: "$699" },
-    { name: "iPhone 15 Pro", storage: "256GB", color: "Titanium Blue", price: "$1,129" },
-    { name: "iPhone 15 Pro Max", storage: "256GB", color: "Titanium Black", price: "$1,309" },
-    { name: "iPhone 14", storage: "128GB", color: "Midnight", price: "$519" },
-    { name: "iPhone 14 Plus", storage: "128GB", color: "Starlight", price: "$579" },
-    { name: "iPhone 13", storage: "128GB", color: "Pink", price: "$459" }
+    {
+        name: "iPhone 17",
+        storage: "128GB",
+        color: "Black",
+        price: "$999"
+    },
+    {
+        name: "iPhone 17",
+        storage: "256GB",
+        color: "Black",
+        price: "$1,149"
+    },
+    {
+        name: "iPhone 17",
+        storage: "512GB",
+        color: "Black",
+        price: "$1,399"
+    },
+    {
+        name: "iPhone 17",
+        storage: "128GB",
+        color: "White",
+        price: "$999"
+    },
+    {
+        name: "iPhone 17",
+        storage: "256GB",
+        color: "White",
+        price: "$1,149"
+    },
+    {
+        name: "iPhone 17",
+        storage: "512GB",
+        color: "White",
+        price: "$1,399"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "128GB",
+        color: "Black",
+        price: "$1,119"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "256GB",
+        color: "Black",
+        price: "$1,269"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "512GB",
+        color: "Black",
+        price: "$1,519"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "128GB",
+        color: "Blue",
+        price: "$1,119"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "256GB",
+        color: "Blue",
+        price: "$1,269"
+    },
+    {
+        name: "iPhone 17 Plus",
+        storage: "512GB",
+        color: "Blue",
+        price: "$1,519"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "256GB",
+        color: "Titanium Blue",
+        price: "$1,499"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "512GB",
+        color: "Titanium Blue",
+        price: "$1,749"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "1TB",
+        color: "Titanium Blue",
+        price: "$1,999"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "256GB",
+        color: "Titanium Gray",
+        price: "$1,499"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "512GB",
+        color: "Titanium Gray",
+        price: "$1,749"
+    },
+    {
+        name: "iPhone 17 Pro",
+        storage: "1TB",
+        color: "Titanium Gray",
+        price: "$1,999"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "256GB",
+        color: "Titanium Black",
+        price: "$1,699"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "512GB",
+        color: "Titanium Black",
+        price: "$1,949"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "1TB",
+        color: "Titanium Black",
+        price: "$2,199"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "2TB",
+        color: "Titanium Black",
+        price: "$2,549"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "256GB",
+        color: "Titanium White",
+        price: "$1,699"
+    },
+    {
+        name: "iPhone 17 Pro Max",
+        storage: "512GB",
+        color: "Titanium White",
+        price: "$1,949"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "128GB",
+        color: "Black",
+        price: "$809"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "256GB",
+        color: "Black",
+        price: "$929"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "512GB",
+        color: "Black",
+        price: "$1,169"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "128GB",
+        color: "Pink",
+        price: "$809"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "256GB",
+        color: "Pink",
+        price: "$929"
+    },
+    {
+        name: "iPhone 17 mini",
+        storage: "512GB",
+        color: "Pink",
+        price: "$1,169"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "128GB",
+        color: "Black",
+        price: "$629"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "256GB",
+        color: "Black",
+        price: "$749"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "128GB",
+        color: "White",
+        price: "$629"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "256GB",
+        color: "White",
+        price: "$749"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "128GB",
+        color: "Red",
+        price: "$629"
+    },
+    {
+        name: "iPhone 17e",
+        storage: "256GB",
+        color: "Red",
+        price: "$749"
+    },
+    {
+        name: "iPhone 16",
+        storage: "128GB",
+        color: "Black",
+        price: "$729"
+    },
+    {
+        name: "iPhone 16",
+        storage: "256GB",
+        color: "Black",
+        price: "$849"
+    },
+    {
+        name: "iPhone 16",
+        storage: "512GB",
+        color: "Black",
+        price: "$1,089"
+    },
+    {
+        name: "iPhone 16",
+        storage: "128GB",
+        color: "Teal",
+        price: "$729"
+    },
+    {
+        name: "iPhone 16 Plus",
+        storage: "128GB",
+        color: "Black",
+        price: "$829"
+    },
+    {
+        name: "iPhone 16 Plus",
+        storage: "256GB",
+        color: "Black",
+        price: "$949"
+    },
+    {
+        name: "iPhone 16 Plus",
+        storage: "512GB",
+        color: "Black",
+        price: "$1,189"
+    },
+    {
+        name: "iPhone 16 Plus",
+        storage: "128GB",
+        color: "Ultramarine",
+        price: "$829"
+    },
+    {
+        name: "iPhone 16 Pro",
+        storage: "128GB",
+        color: "Titanium Natural",
+        price: "$1,209"
+    },
+    {
+        name: "iPhone 16 Pro",
+        storage: "256GB",
+        color: "Titanium Natural",
+        price: "$1,329"
+    },
+    {
+        name: "iPhone 16 Pro",
+        storage: "512GB",
+        color: "Titanium Natural",
+        price: "$1,569"
+    },
+    {
+        name: "iPhone 16 Pro",
+        storage: "128GB",
+        color: "Titanium Desert",
+        price: "$1,209"
+    },
+    {
+        name: "iPhone 16 Pro Max",
+        storage: "256GB",
+        color: "Titanium Black",
+        price: "$1,449"
+    },
+    {
+        name: "iPhone 16 Pro Max",
+        storage: "512GB",
+        color: "Titanium Black",
+        price: "$1,689"
+    },
+    {
+        name: "iPhone 16 Pro Max",
+        storage: "1TB",
+        color: "Titanium Black",
+        price: "$1,929"
+    },
+    {
+        name: "iPhone 16e",
+        storage: "128GB",
+        color: "Black",
+        price: "$549"
+    },
+    {
+        name: "iPhone 16e",
+        storage: "256GB",
+        color: "Black",
+        price: "$669"
+    },
+    {
+        name: "iPhone 15",
+        storage: "128GB",
+        color: "Black",
+        price: "$609"
+    },
+    {
+        name: "iPhone 15",
+        storage: "256GB",
+        color: "Black",
+        price: "$729"
+    },
+    {
+        name: "iPhone 15 Plus",
+        storage: "128GB",
+        color: "Blue",
+        price: "$699"
+    },
+    {
+        name: "iPhone 15 Pro",
+        storage: "256GB",
+        color: "Titanium Blue",
+        price: "$1,129"
+    },
+    {
+        name: "iPhone 15 Pro Max",
+        storage: "256GB",
+        color: "Titanium Black",
+        price: "$1,309"
+    },
+    {
+        name: "iPhone 14",
+        storage: "128GB",
+        color: "Midnight",
+        price: "$519"
+    },
+    {
+        name: "iPhone 14 Plus",
+        storage: "128GB",
+        color: "Starlight",
+        price: "$579"
+    },
+    {
+        name: "iPhone 13",
+        storage: "128GB",
+        color: "Pink",
+        price: "$459"
+    }
 ];
 
 function buildRawItem(index) {
