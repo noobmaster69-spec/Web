@@ -115,6 +115,24 @@ function generateBatch(page, batchIndex) {
     );
 }
 
+// Each cell only reveals its data once it's genuinely been scrolled
+// into the real page viewport (root: null — the actual document
+// viewport, not a bounded mini scrollbox). A scraper has to actually
+// scroll the page to reach items further down, same as a real user.
+//
+// IntersectionObserver callbacks are asynchronous by spec — they
+// don't fire the instant an element mounts, only on a later
+// layout/idle pass. If a scraper's headless browser snapshots the
+// DOM extremely quickly after load (before that first async callback
+// runs), an item that's ALREADY inside the viewport on page load —
+// like the very first batch at the top of the page — could still be
+// caught mid-skeleton, purely due to that timing race, not because
+// the scraper failed to scroll. To avoid that false negative, this
+// does one synchronous getBoundingClientRect() check right on mount:
+// if the cell is already visible at that instant, it decodes
+// immediately, no async wait involved. Items genuinely below the
+// fold still rely on the observer firing once they're scrolled into
+// view for real — so the scroll requirement stays genuine for those.
 function LazyCell({ index, encoded }) {
     const cellRef = useRef(null);
     const [data, setData] = useState(null);
@@ -131,6 +149,7 @@ function LazyCell({ index, encoded }) {
                 isEvent: true
             });
         }
+
         // synchronous check first — catches anything already in the
         // viewport on the very first paint, no async delay involved
         const rect = cellRef.current.getBoundingClientRect();
@@ -142,8 +161,11 @@ function LazyCell({ index, encoded }) {
 
         if (alreadyVisible) {
             reveal("was already in the initial viewport on mount");
-            return; 
+            return; // no need to set up an observer for this one
         }
+
+        // otherwise, this item is genuinely below the fold — wait for
+        // a real scroll to bring it into view before revealing it
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
@@ -152,7 +174,7 @@ function LazyCell({ index, encoded }) {
                     }
                 });
             },
-            { root: null, threshold: 0.4 } 
+            { root: null, threshold: 0.4 } // root: null = the actual page/document viewport
         );
         observer.observe(cellRef.current);
         return () => observer.disconnect();
@@ -230,6 +252,10 @@ function ScrollLazyLoad() {
     const canLoadMore = loadMoreClicks < MAX_LOAD_MORE_CLICKS;
     const canGoPrevious = page > 1;
     const canGoNext = page < MAX_PAGE;
+
+    // NOTE: no ".panel" wrapper, no bordered/boxed container. This
+    // renders straight into the normal page flow — the grid below is
+    // just regular content on the page, not a self-contained widget.
     return (
         <div>
             <p className="case-meta" style={{ marginBottom: 12 }}>
