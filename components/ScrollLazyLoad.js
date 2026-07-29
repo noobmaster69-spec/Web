@@ -12,6 +12,16 @@
 // timing race against the observer's async callback. "Load more" and
 // pagination (Prev/Next via the URL) work as before.
 //
+// FIX: when the page changes (Prev/Next), the browser's scroll
+// position used to stay wherever it was — but batches reset to just
+// 1 on page change, so the section gets much shorter and the old
+// scroll offset can land past the new content, leaving the new
+// page's first batch stuck as an undiscovered skeleton. Now the view
+// scrolls back to the top of this section on every page change, so
+// the new page's first batch is immediately visible and decodes
+// right away (same "already visible -> instant reveal" rule as on
+// initial mount) — keeping every item reliably reachable by scroll.
+//
 // Total data: 60 items across 3 pages (20 items/page).
 // Each page: initial batch of 5 items, then "Load more" can be
 // clicked 3x (+5 items each) until 20 items are showing.
@@ -124,15 +134,15 @@ function generateBatch(page, batchIndex) {
 // don't fire the instant an element mounts, only on a later
 // layout/idle pass. If a scraper's headless browser snapshots the
 // DOM extremely quickly after load (before that first async callback
-// runs), an item that's ALREADY inside the viewport on page load —
-// like the very first batch at the top of the page — could still be
-// caught mid-skeleton, purely due to that timing race, not because
-// the scraper failed to scroll. To avoid that false negative, this
-// does one synchronous getBoundingClientRect() check right on mount:
-// if the cell is already visible at that instant, it decodes
-// immediately, no async wait involved. Items genuinely below the
-// fold still rely on the observer firing once they're scrolled into
-// view for real — so the scroll requirement stays genuine for those.
+// runs), an item that's ALREADY inside the viewport on page load
+// could still be caught mid-skeleton, purely due to that timing
+// race, not because the scraper failed to scroll. To avoid that
+// false negative, this does one synchronous getBoundingClientRect()
+// check right on mount: if the cell is already visible at that
+// instant, it decodes immediately, no async wait involved. Items
+// genuinely below the fold still rely on the observer firing once
+// they're scrolled into view for real — so the scroll requirement
+// stays genuine for those.
 function LazyCell({ index, encoded }) {
     const cellRef = useRef(null);
     const [data, setData] = useState(null);
@@ -196,6 +206,12 @@ function LazyCell({ index, encoded }) {
 }
 
 function ScrollLazyLoad() {
+    // anchor at the top of this whole fixture — used to reset scroll
+    // position back here whenever the page (1/2/3) changes, so the
+    // new page's first batch always starts out visible & reachable
+    const topRef = useRef(null);
+    const isFirstRender = useRef(true);
+
     const getPageFromUrl = () => {
         const params = new URLSearchParams(window.location.search);
         const p = parseInt(params.get("page"), 10);
@@ -209,6 +225,18 @@ function ScrollLazyLoad() {
     useEffect(() => {
         setBatches([generateBatch(page, 0)]);
         setLoadMoreClicks(0);
+
+        // Skip on the very first mount (page load) — the browser already
+        // starts scrolled to the top of the document, no need to jump.
+        // On every SUBSEQUENT page change (Prev/Next click, or browser
+        // back/forward), scroll back to the top of this section so the
+        // new page's shorter batch list isn't left stranded below
+        // whatever scroll offset the old, taller page had.
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+        } else if (topRef.current) {
+            topRef.current.scrollIntoView({ behavior: "auto", block: "start" });
+        }
     }, [page]);
 
     const handleLoadMore = useCallback(() => {
@@ -257,7 +285,7 @@ function ScrollLazyLoad() {
     // renders straight into the normal page flow — the grid below is
     // just regular content on the page, not a self-contained widget.
     return (
-        <div>
+        <div ref={topRef}>
             <p className="case-meta" style={{ marginBottom: 12 }}>
                 lazy load → load more → pagination (page {page}/{MAX_PAGE})
             </p>
