@@ -551,9 +551,9 @@ function ScrollLazyLoad() {
                 <div style={{ height: 100 }} />
             </div>
             <div className="hint">
-                {ITEMS_PER_BATCH} item awal lazy-load per scroll. "Load more" bisa dipakai {MAX_LOAD_MORE_CLICKS}x
-                (total {ITEMS_PER_PAGE} item/halaman), lalu tombol berubah jadi "Previous"/"Next" yang ganti
-                halaman lewat URL <code>?page=</code>. Total {TOTAL_ITEMS} item di {MAX_PAGE} halaman.
+                {ITEMS_PER_BATCH} initial items are lazy-loaded per scroll. The "Load more" button can be used {MAX_LOAD_MORE_CLICKS} times
+                (total {ITEMS_PER_PAGE} items per page), after which the button changes to "Previous"/"Next" to switch
+                pages via the URL <code>?page=</code>. Total {TOTAL_ITEMS} items across {MAX_PAGE} pages.
             </div>
         </div>
     );
