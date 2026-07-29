@@ -123,25 +123,7 @@ const CASES = [
         chipText: "needs scroll",
         desc: "Content only renders once its container is scrolled into view (IntersectionObserver).",
         getComponent: () => window.ScrapeBenchComponents.ScrollLazyLoad
-    },
-    {
-        id: "12",
-        key: "load-more",
-        title: "Load more button",
-        chip: "info",
-        chipText: "click to append",
-        desc: "Clicking a button appends more items to the same list — must be clicked repeatedly to get everything.",
-        getComponent: () => window.ScrapeBenchComponents.LoadMoreDemo
-    },
-    {
-        id: "13",
-        key: "pagination",
-        title: "Next button / pagination",
-        chip: "info",
-        chipText: "click to replace",
-        desc: "Clicking Next replaces the visible list with a new page of results.",
-        getComponent: () => window.ScrapeBenchComponents.PaginationDemo
-    },
+    }
 ];
 
 
