@@ -53,15 +53,6 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.DelayedContent
     },
     {
-        id: "11",
-        key: "scroll-lazy",
-        title: "Scroll-triggered lazy load",
-        chip: "info",
-        chipText: "needs scroll",
-        desc: "Content only renders once its container is scrolled into view (IntersectionObserver).",
-        getComponent: () => window.ScrapeBenchComponents.ScrollLazyLoad
-    },
-    {
         id: "04",
         key: "cookie",
         title: "Cookies",
@@ -107,24 +98,6 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.CaptchaBlock
     },
     {
-        id: "12",
-        key: "load-more",
-        title: "Load more button",
-        chip: "info",
-        chipText: "click to append",
-        desc: "Clicking a button appends more items to the same list — must be clicked repeatedly to get everything.",
-        getComponent: () => window.ScrapeBenchComponents.LoadMoreDemo
-    },
-    {
-        id: "13",
-        key: "pagination",
-        title: "Next button / pagination",
-        chip: "info",
-        chipText: "click to replace",
-        desc: "Clicking Next replaces the visible list with a new page of results.",
-        getComponent: () => window.ScrapeBenchComponents.PaginationDemo
-    },
-    {
         id: "09",
         key: "live-counter",
         title: "Live-updating data",
@@ -142,29 +115,45 @@ const CASES = [
         desc: "Embeds the community creep.js report to compare automation detectability against a normal browser.",
         getComponent: () => window.ScrapeBenchComponents.CreepJsDemo
     },
+    {
+        id: "11",
+        key: "scroll-lazy",
+        title: "Scroll-triggered lazy load",
+        chip: "info",
+        chipText: "needs scroll",
+        desc: "Content only renders once its container is scrolled into view (IntersectionObserver).",
+        getComponent: () => window.ScrapeBenchComponents.ScrollLazyLoad
+    },
+    {
+        id: "12",
+        key: "load-more",
+        title: "Load more button",
+        chip: "info",
+        chipText: "click to append",
+        desc: "Clicking a button appends more items to the same list — must be clicked repeatedly to get everything.",
+        getComponent: () => window.ScrapeBenchComponents.LoadMoreDemo
+    },
+    {
+        id: "13",
+        key: "pagination",
+        title: "Next button / pagination",
+        chip: "info",
+        chipText: "click to replace",
+        desc: "Clicking Next replaces the visible list with a new page of results.",
+        getComponent: () => window.ScrapeBenchComponents.PaginationDemo
+    },
 ];
 
-// ------------------------------------------------------------
-// ConsoleLog — the fixed panel at the bottom of the page. It doesn't
-// know about any specific test case; it just subscribes to
-// window.ScrapeBenchConsole (defined in shared.js) and prints
-// whatever any component logs, in order, with a timestamp.
-// ------------------------------------------------------------
-function ConsoleLog() {
-    // rows holds up to the last 50 log entries received
-    const [rows, setRows] = useState([]);
-    // bottomRef marks an empty div at the end of the list, used to
-    // auto-scroll the console down whenever a new row arrives
-    const bottomRef = useRef(null);
 
-    // subscribe to the global console bus once, on mount
+function ConsoleLog() {
+    const [rows, setRows] = useState([]);
+    const bottomRef = useRef(null);
     useEffect(() => {
         const unsubscribe = window.ScrapeBenchConsole.subscribe((entry) => {
             setRows((prev) => [...prev.slice(-49), entry]); // keep only the last 50 rows
         });
         return unsubscribe; // clean up the subscription if this ever unmounts
     }, []);
-
     // whenever rows changes, scroll the console panel to the newest entry
     useEffect(() => {
         if (bottomRef.current) bottomRef.current.scrollIntoView({ block: "end" });
@@ -188,14 +177,6 @@ function ConsoleLog() {
         </div>
     );
 }
-
-// ------------------------------------------------------------
-// CaseSection — renders ONE test case as a labeled section on the
-// page: id="case-<key>" (so the sidebar can scroll to it), a header
-// with the case number/title/status chip, a short description, and
-// finally the actual test-case component itself (pulled live from
-// window.ScrapeBenchComponents via item.getComponent()).
-// ------------------------------------------------------------
 function CaseSection({ item }) {
     const Component = item.getComponent();
     return (
@@ -220,15 +201,7 @@ function CaseSection({ item }) {
     );
 }
 
-// ------------------------------------------------------------
-// App — the top-level component. Renders:
-//   1. sidebar   — brand header + a "jump to section" link list
-//   2. main      — an intro blurb, then every CaseSection stacked
-//   3. ConsoleLog — fixed activity log pinned to the bottom
-// ------------------------------------------------------------
 function App() {
-    // Smoothly scrolls the page so the section with the matching
-    // key comes into view. Called when a sidebar link is clicked.
     function jumpTo(key) {
         const el = document.getElementById(`case-${key}`);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
