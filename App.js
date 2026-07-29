@@ -5,31 +5,14 @@
 // instead of a click-through tab view. Every fixture is mounted at
 // once, so a single fetch/render of this page exercises all 13
 // scraping scenarios in one pass.
-//
-// NOTE: the "scroll-lazy" case (#11) is special — instead of being
-// rendered as one contiguous <CaseSection>, its pieces (Intro / four
-// product-batch segments / Controls) are threaded in between the
-// OTHER cases below, so the content actually mixes into the page
-// flow instead of sitting isolated in its own box. All the pieces
-// still share one state via <ScrollLazyLoad.Provider>.
 // ============================================================
 
 const { useState, useEffect, useRef } = React;
 
 // ------------------------------------------------------------
-// CASES — metadata for every test case. This does NOT contain the
-// actual component logic (that lives in components/*.js) — it just
-// describes each case for the sidebar + section header, and points
-// to the matching component via getComponent().
-//   id         -> shown as the case number (e.g. "01")
-//   key        -> unique slug, used for the section's HTML id
-//   title      -> heading shown in the sidebar + section header
-//   chip       -> color of the small status badge (ok/info/warn/danger)
-//   chipText   -> text shown inside that badge
-//   desc       -> one-line explanation shown under the section title
-//   getComponent -> returns the actual React component to render,
-//                   pulled from window.ScrapeBenchComponents (set by
-//                   each file in components/ when it loads)
+// CASES — metadata for every test case, in render order.
+// "scroll-lazy" is placed LAST on purpose, so it's the final section
+// on the page rather than the first thing a scraper sees.
 // ------------------------------------------------------------
 const CASES = [
     {
@@ -55,12 +38,12 @@ const CASES = [
         key: "delayed",
         title: "Delayed selector",
         chip: "warn",
-        chipText: "wait ~30s",
+        chipText: "wait ~4s",
         desc: "Target element does not exist until several seconds after load — tests wait_for_selector handling.",
         getComponent: () => window.ScrapeBenchComponents.DelayedContent
     },
     {
-        id: "04",
+        id: "05",
         key: "cookie",
         title: "Cookies",
         chip: "info",
@@ -69,7 +52,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.CookieDemo
     },
     {
-        id: "05",
+        id: "06",
         key: "network",
         title: "Network calls",
         chip: "info",
@@ -78,7 +61,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.NetworkCallDemo
     },
     {
-        id: "06",
+        id: "07",
         key: "assets",
         title: "Images, fonts, stylesheets",
         chip: "ok",
@@ -87,7 +70,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.AssetsDemo
     },
     {
-        id: "07",
+        id: "08",
         key: "prompt-injection",
         title: "Non-rendered prompt injection",
         chip: "danger",
@@ -96,7 +79,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.PromptInjectionHidden
     },
     {
-        id: "08",
+        id: "09",
         key: "captcha",
         title: "Captcha / blocking keyword",
         chip: "danger",
@@ -105,7 +88,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.CaptchaBlock
     },
     {
-        id: "09",
+        id: "10",
         key: "live-counter",
         title: "Live-updating data",
         chip: "warn",
@@ -114,7 +97,7 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.LiveCounter
     },
     {
-        id: "10",
+        id: "11",
         key: "creepjs",
         title: "creep.js fingerprint probe",
         chip: "danger",
@@ -123,27 +106,27 @@ const CASES = [
         getComponent: () => window.ScrapeBenchComponents.CreepJsDemo
     },
     {
-        id: "11",
+        id: "04",
         key: "scroll-lazy",
-        title: "Scroll-triggered lazy load",
+        title: "Scroll-triggered lazy load + load more + pagination",
         chip: "info",
         chipText: "needs scroll",
-        desc: "Content only renders once its container is scrolled into view (IntersectionObserver). Spread across this page rather than boxed in one section.",
-        getComponent: () => null // handled specially in App() below, not via CaseSection
+        desc: "Items below the fold only reveal data once genuinely scrolled into the real page viewport; anything already visible on load decodes immediately (no timing race). Also includes a Load more button and Prev/Next pagination via the URL — all three interactions combined in one fixture.",
+        getComponent: () => window.ScrapeBenchComponents.ScrollLazyLoad
     }
 ];
-
 
 function ConsoleLog() {
     const [rows, setRows] = useState([]);
     const bottomRef = useRef(null);
+
     useEffect(() => {
         const unsubscribe = window.ScrapeBenchConsole.subscribe((entry) => {
-            setRows((prev) => [...prev.slice(-49), entry]); // keep only the last 50 rows
+            setRows((prev) => [...prev.slice(-49), entry]);
         });
-        return unsubscribe; // clean up the subscription if this ever unmounts
+        return unsubscribe;
     }, []);
-    // whenever rows changes, scroll the console panel to the newest entry
+
     useEffect(() => {
         if (bottomRef.current) bottomRef.current.scrollIntoView({ block: "end" });
     }, [rows]);
@@ -180,23 +163,12 @@ function CaseSection({ item }) {
             </div>
             <p className="case-desc">{item.desc}</p>
             {Component ? (
-                // Component was found on window.ScrapeBenchComponents — render it
                 <Component />
             ) : (
-                // Component was NOT found — usually means its <script> tag is
-                // missing/misordered in index.html, or the file 404'd
                 <div className="chip danger">component failed to load — check script order in index.html</div>
             )}
         </section>
     );
-}
-
-// A thin wrapper section for a piece of the scroll-lazy fixture, so it
-// keeps the same "case-section" spacing/styling as the other cases even
-// though it's just a fragment (intro / one batch / controls) rather than
-// a full case.
-function ScrollLazyFragment({ children }) {
-    return <section className="case-section">{children}</section>;
 }
 
 function App() {
@@ -205,12 +177,8 @@ function App() {
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    const byKey = (key) => CASES.find((c) => c.key === key);
-    const ScrollLazy = window.ScrapeBenchComponents.ScrollLazyLoad;
-
     return (
         <div className="shell">
-            {/* ---- sidebar: brand + quick-jump links, no active/selected state anymore ---- */}
             <nav className="sidebar">
                 <div className="brand">
                     <h1><span className="dot">● </span>scrape-bench</h1>
@@ -228,63 +196,22 @@ function App() {
                     ))}
                 </ul>
             </nav>
-
-            {/* ---- main content: intro, then every case, with the scroll-lazy
-                 fixture's pieces threaded in between the others instead of
-                 sitting in one block ---- */}
             <main className="main">
                 <div className="page-intro">
                     <p className="case-meta">scrape-bench · all test cases on one page</p>
                     <h2>13 scraping test fixtures</h2>
                     <p className="case-desc">
                         Every fixture below is mounted at once, so a single fetch/render of this page exercises
-                        all 13 scenarios in one pass — static HTML, JS rendering, delays, scroll triggers, cookies,
-                        network calls, assets, hidden prompt injection, anti-bot walls, load-more/pagination,
-                        live-updating data, and a fingerprint probe. Scroll down or use the sidebar to jump to a section.
+                        all 13 scenarios in one pass — static HTML, JS rendering, delays, cookies, network calls,
+                        assets, hidden prompt injection, anti-bot walls, load-more/pagination, live-updating data,
+                        a fingerprint probe, and scroll-triggered lazy load at the very bottom. Scroll down or use
+                        the sidebar to jump to a section.
                     </p>
                 </div>
-
-                <ScrollLazy.Provider>
-                    <CaseSection item={byKey("static")} />
-                    <CaseSection item={byKey("js-rendered")} />
-
-                    <ScrollLazyFragment>
-                        <ScrollLazy.Intro />
-                        <ScrollLazy.Batch batchIndex={0} />
-                    </ScrollLazyFragment>
-
-                    <CaseSection item={byKey("delayed")} />
-                    <CaseSection item={byKey("cookie")} />
-
-                    <ScrollLazyFragment>
-                        <ScrollLazy.Batch batchIndex={1} />
-                    </ScrollLazyFragment>
-
-                    <CaseSection item={byKey("network")} />
-                    <CaseSection item={byKey("assets")} />
-
-                    <ScrollLazyFragment>
-                        <ScrollLazy.Batch batchIndex={2} />
-                    </ScrollLazyFragment>
-
-                    <CaseSection item={byKey("prompt-injection")} />
-                    <CaseSection item={byKey("captcha")} />
-
-                    <ScrollLazyFragment>
-                        <ScrollLazy.Batch batchIndex={3} />
-                    </ScrollLazyFragment>
-
-                    <CaseSection item={byKey("live-counter")} />
-
-                    <ScrollLazyFragment>
-                        <ScrollLazy.Controls />
-                    </ScrollLazyFragment>
-
-                    <CaseSection item={byKey("creepjs")} />
-                </ScrollLazy.Provider>
+                {CASES.map((item) => (
+                    <CaseSection key={item.key} item={item} />
+                ))}
             </main>
-
-            {/* ---- fixed console panel at the bottom, shared across all sections ---- */}
             <ConsoleLog />
         </div>
     );
