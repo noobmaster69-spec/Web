@@ -4,16 +4,12 @@
 // sampai 20 item penuh. Pagination mentok di page 3 (Next hilang di page terakhir).
 const { useState, useEffect, useRef, useCallback } = React;
 
-const ITEMS_PER_BATCH = 5;          // jumlah item yang muncul sebelum tombol "Load more"
-const MAX_PAGE = 3;                 // halaman terakhir
-const TOTAL_ITEMS = 60;             // total seluruh data
-const ITEMS_PER_PAGE = TOTAL_ITEMS / MAX_PAGE;      // 20 item per halaman
-const MAX_LOAD_MORE_CLICKS = ITEMS_PER_PAGE / ITEMS_PER_BATCH - 1; // 3x klik (batch awal + 3 = 4 batch = 20 item)
+const ITEMS_PER_BATCH = 5;          
+const MAX_PAGE = 3;               
+const TOTAL_ITEMS = 60;           
+const ITEMS_PER_PAGE = TOTAL_ITEMS / MAX_PAGE;     
+const MAX_LOAD_MORE_CLICKS = ITEMS_PER_PAGE / ITEMS_PER_BATCH - 1; 
 
-// ------------------------------------------------------------
-// SUMBER DATA — plain object biasa, gampang dibaca & diedit manual.
-// Total 60 objek, urutan sesuai posisi (index 0 = item pertama page 1).
-// ------------------------------------------------------------
 const RAW_PRODUCT_DATA = [
     { name: "iPhone 17", storage: "128GB", color: "Black", price: "Rp 16.299.000" },
     { name: "iPhone 17", storage: "256GB", color: "Black", price: "Rp 18.799.000" },
@@ -89,11 +85,6 @@ function buildRawItem(index) {
     };
 }
 
-// ------------------------------------------------------------
-// ENCODING — data plain di atas diubah jadi base64 per item di sini,
-// jadi walau sumbernya gampang dibaca manusia, runtime-nya tetap
-// gak kebaca sebelum sentinel item itu sendiri intersect.
-// ------------------------------------------------------------
 function encodeItem(obj) {
     return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
 }
@@ -118,25 +109,30 @@ function LazyCell({ index, encoded, trackRef }) {
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
-                    if (entry.isIntersecting && !data) {
+                    // threshold 1.0 -> baru trigger kalau elemen 100% kelihatan penuh
+                    if (entry.isIntersecting && entry.intersectionRatio >= 1 && !data) {
                         setData(decodeItem(encoded));
                         window.ScrapeBenchConsole.log({
                             method: "EVT",
-                            text: `/case/scroll-lazy — item #${index + 1} intersected & ter-decode`,
+                            text: `/case/scroll-lazy — item #${index + 1} 100% visible & ter-decode`,
                             status: "ok",
                             isEvent: true
                         });
                     }
                 });
             },
-            { root: trackRef.current, threshold: 0.5 }
+            { root: trackRef.current, threshold: 1.0 }
         );
         observer.observe(cellRef.current);
         return () => observer.disconnect();
     }, [data, encoded, index, trackRef]);
 
     if (!data) {
-        return <div ref={cellRef} className="skeleton" style={{ height: 80, width: "100%" }} />;
+        return (
+            <div ref={cellRef} className="skeleton" style={{ height: 80, width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 12, opacity: 0.6 }}>Loading…</span>
+            </div>
+        );
     }
 
     return (
