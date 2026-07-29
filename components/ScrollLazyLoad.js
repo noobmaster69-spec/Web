@@ -3,14 +3,15 @@
 // box, no inner mini-scrollbox — so it visually blends with the rest
 // of the page rather than sitting in its own isolated widget.
 //
-// Items genuinely below the fold only reveal their data once
-// scrolled into the real page viewport (IntersectionObserver,
-// root: null) — a scraper has to actually scroll down to reach them,
-// same as a real user would. Items already visible on initial load
-// (like the first batch, sitting at the very top of the page) decode
+// This is intentionally INTERACTIVE: items genuinely below the fold
+// only reveal their data once scrolled into the real page viewport
+// (IntersectionObserver, root: null), "Load more" has to be clicked
+// to reveal further items, and later pages only load after Prev/Next
+// is clicked. A scraper/agent has to actually perform these actions
+// (scroll, click Load more, click Next) to reach all 60 items — same
+// as a real user would. Items already visible on initial load decode
 // immediately via a synchronous check, so there's no false-negative
-// timing race against the observer's async callback. "Load more" and
-// pagination (Prev/Next via the URL) work as before.
+// timing race against the observer's async callback.
 //
 // FIX: when the page changes (Prev/Next), the browser's scroll
 // position used to stay wherever it was — but batches reset to just
@@ -127,8 +128,9 @@ function generateBatch(page, batchIndex) {
 
 // Each cell only reveals its data once it's genuinely been scrolled
 // into the real page viewport (root: null — the actual document
-// viewport, not a bounded mini scrollbox). A scraper has to actually
-// scroll the page to reach items further down, same as a real user.
+// viewport, not a bounded mini scrollbox). A scraper agent has to
+// actually scroll the page to reach items further down, same as a
+// real user would.
 //
 // IntersectionObserver callbacks are asynchronous by spec — they
 // don't fire the instant an element mounts, only on a later
@@ -136,13 +138,13 @@ function generateBatch(page, batchIndex) {
 // DOM extremely quickly after load (before that first async callback
 // runs), an item that's ALREADY inside the viewport on page load
 // could still be caught mid-skeleton, purely due to that timing
-// race, not because the scraper failed to scroll. To avoid that
-// false negative, this does one synchronous getBoundingClientRect()
-// check right on mount: if the cell is already visible at that
-// instant, it decodes immediately, no async wait involved. Items
-// genuinely below the fold still rely on the observer firing once
-// they're scrolled into view for real — so the scroll requirement
-// stays genuine for those.
+// race, not because the agent failed to scroll. To avoid that false
+// negative, this does one synchronous getBoundingClientRect() check
+// right on mount: if the cell is already visible at that instant, it
+// decodes immediately, no async wait involved. Items genuinely below
+// the fold still rely on the observer firing once they're scrolled
+// into view for real — so the scroll requirement stays genuine for
+// those.
 function LazyCell({ index, encoded }) {
     const cellRef = useRef(null);
     const [data, setData] = useState(null);
