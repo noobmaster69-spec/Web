@@ -38,7 +38,7 @@ const CASES = [
         key: "delayed",
         title: "Delayed selector",
         chip: "warn",
-        chipText: "wait ~4s",
+        chipText: "wait ~25s",
         desc: "Target element does not exist until several seconds after load — tests wait_for_selector handling.",
         getComponent: () => window.ScrapeBenchComponents.DelayedContent
     },
