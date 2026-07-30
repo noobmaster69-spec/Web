@@ -1,19 +1,10 @@
-// ============================================================
 // App.js — loads LAST (after shared.js and every file in components/).
 // This file wires all the individual test-case components together
 // into ONE continuously-scrollable page (like a product catalog),
 // instead of a click-through tab view. Every fixture is mounted at
 // once, so a single fetch/render of this page exercises all 13
 // scraping scenarios in one pass.
-// ============================================================
-
 const { useState, useEffect, useRef } = React;
-
-// ------------------------------------------------------------
-// CASES — metadata for every test case, in render order.
-// "scroll-lazy" is placed LAST on purpose, so it's the final section
-// on the page rather than the first thing a scraper sees.
-// ------------------------------------------------------------
 const CASES = [
     {
         id: "01",
@@ -149,7 +140,6 @@ function ConsoleLog() {
         </div>
     );
 }
-
 function CaseSection({ item }) {
     const Component = item.getComponent();
     return (
@@ -176,7 +166,6 @@ function App() {
         const el = document.getElementById(`case-${key}`);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-
     return (
         <div className="shell">
             <nav className="sidebar">
@@ -216,7 +205,6 @@ function App() {
         </div>
     );
 }
-
 // mount the whole app into <div id="app-mount"> from index.html
 const root = ReactDOM.createRoot(document.getElementById("app-mount"));
 root.render(<App />);
