@@ -16,10 +16,7 @@ function JsRenderedContent() {
                 price: "Rp 21.799.000"
             }
         ];
-
         setProducts(built);
-
-        // Tetap kompatibel dengan ScrapeBench
         if (window.ScrapeBenchConsole) {
             window.ScrapeBenchConsole.log({
                 method: "JS",
@@ -28,7 +25,6 @@ function JsRenderedContent() {
             });
         }
     }, []);
-
     return (
         <div className="panel">
             <h3>Target: #js-rendered-target</h3>
@@ -61,8 +57,6 @@ function JsRenderedContent() {
         </div>
     );
 }
-
-// Registrasi komponen
 window.ScrapeBenchComponents =
     window.ScrapeBenchComponents || {};
 
