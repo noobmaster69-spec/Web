@@ -1,4 +1,3 @@
-// Test case: "data yang update tiap detik"
 const { useState, useEffect } = React;
 
 function LiveCounter() {
