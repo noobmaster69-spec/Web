@@ -1,6 +1,4 @@
 // Test case: "non rendered prompt injection"
-// #hidden-injection-payload benar-benar tidak terlihat (display:none + aria-hidden)
-// tapi tetap ada di DOM. Cek apakah pipeline AI summary kamu ikut membaca teks ini.
 const { useEffect } = React;
 
 function PromptInjectionHidden() {
