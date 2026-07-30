@@ -1,13 +1,4 @@
 // Test case: "wait for a few seconds" (wait_for_selector)
-// Before DELAY_MS elapses, NOTHING related to this fixture exists in
-// the DOM at all — not #delayed-target, not its card, not the hint
-// text below it. There's no skeleton placeholder standing in either;
-// document.querySelector("#delayed-target") genuinely returns null
-// the whole time. Only after the timeout fires does the entire block
-// — the target element, its content, AND the hint — get inserted at
-// once, in a single render. This makes wait_for_selector testing
-// honest: a scraper checking for #delayed-target too early gets a
-// real "not found", not a stand-in element with the wrong contents.
 const { useState, useEffect } = React;
 const DELAY_MS = 25000;
 
