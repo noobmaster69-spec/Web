@@ -9,7 +9,7 @@
 // honest: a scraper checking for #delayed-target too early gets a
 // real "not found", not a stand-in element with the wrong contents.
 const { useState, useEffect } = React;
-const DELAY_MS = 30000;
+const DELAY_MS = 25000;
 
 function DelayedContent() {
     const [ready, setReady] = useState(false);
