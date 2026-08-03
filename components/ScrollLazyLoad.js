@@ -38,7 +38,7 @@ function buildRawItem(index) {
 // Ini murni struktur data di memory — tidak pernah langsung dipakai
 // untuk render/reveal apapun; tetap harus lewat encodeItem() + scroll-gate.
 const ALL_PRODUCT_ITEMS = RAW_PRODUCT_DATA.map((_, index) => buildRawItem(index));
-
+window.__debug_ALL_PRODUCT_ITEMS = ALL_PRODUCT_ITEMS;
 function encodeItem(obj) {
     return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
 }
