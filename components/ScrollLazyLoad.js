@@ -1,41 +1,10 @@
 // Test case: "scroll-triggered lazy load + load more + pagination (prev/next)"
-// Renders directly into the page's normal document flow — no bordered
-// box, no inner mini-scrollbox — so it visually blends with the rest
-// of the page rather than sitting in its own isolated widget.
-//
-// This is intentionally INTERACTIVE: items genuinely below the fold
-// only reveal their data once scrolled into the real page viewport
-// (IntersectionObserver, root: null), "Load more" has to be clicked
-// to reveal further items, and later pages only load after Prev/Next
-// is clicked. A scraper/agent has to actually perform these actions
-// (scroll, click Load more, click Next) to reach all 60 items — same
-// as a real user would.
-//
 // STRICT SCROLL GATE: no item — not even one that happens to already
 // sit inside the viewport the instant it mounts — reveals its data
 // until the user has performed at least one genuine scroll gesture
 // (a real "wheel" or "touchmove" event on the window). Merely opening
-// / mounting the page is NOT enough anymore. Once that first genuine
-// scroll gesture has been observed, items already in view reveal
-// immediately (no need to scroll each one individually into view),
-// and items below the fold still reveal only once actually scrolled
-// into the real page viewport via IntersectionObserver — same as
-// before.
-//
-// FIX: when the page changes (Prev/Next), the browser's scroll
-// position used to stay wherever it was — but batches reset to just
-// 1 on page change, so the section gets much shorter and the old
-// scroll offset can land past the new content, leaving the new
-// page's first batch stuck as an undiscovered skeleton. Now the view
-// scrolls back to the top of this section on every page change, so
-// the new page's first batch is immediately visible (and, once the
-// scroll gate has been unlocked at least once, decodes right away) —
-// keeping every item reliably reachable by scroll.
-//
-// Total data: 60 items across 3 pages (20 items/page).
-// Each page: initial batch of 5 items, then "Load more" can be
-// clicked 3x (+5 items each) until 20 items are showing.
-// Pagination caps at page 3 (Next disappears on the last page).
+// / mounting the page is NOT enough anymore. The gate re-arms on every
+// page change (Prev/Next), so each page needs its own fresh scroll.
 const { useState, useEffect, useRef, useCallback } = React;
 
 const ITEMS_PER_BATCH = 5;
@@ -44,69 +13,14 @@ const TOTAL_ITEMS = 60;
 const ITEMS_PER_PAGE = TOTAL_ITEMS / MAX_PAGE;
 const MAX_LOAD_MORE_CLICKS = ITEMS_PER_PAGE / ITEMS_PER_BATCH - 1;
 
-const RAW_PRODUCT_DATA = [
-    { name: "iPhone 17", storage: "128GB", color: "Black", price: "$999" },
-    { name: "iPhone 17", storage: "256GB", color: "Black", price: "$1,149" },
-    { name: "iPhone 17", storage: "512GB", color: "Black", price: "$1,399" },
-    { name: "iPhone 17", storage: "128GB", color: "White", price: "$999" },
-    { name: "iPhone 17", storage: "256GB", color: "White", price: "$1,149" },
-    { name: "iPhone 17", storage: "512GB", color: "White", price: "$1,399" },
-    { name: "iPhone 17 Plus", storage: "128GB", color: "Black", price: "$1,119" },
-    { name: "iPhone 17 Plus", storage: "256GB", color: "Black", price: "$1,269" },
-    { name: "iPhone 17 Plus", storage: "512GB", color: "Black", price: "$1,519" },
-    { name: "iPhone 17 Plus", storage: "128GB", color: "Blue", price: "$1,119" },
-    { name: "iPhone 17 Plus", storage: "256GB", color: "Blue", price: "$1,269" },
-    { name: "iPhone 17 Plus", storage: "512GB", color: "Blue", price: "$1,519" },
-    { name: "iPhone 17 Pro", storage: "256GB", color: "Titanium Blue", price: "$1,499" },
-    { name: "iPhone 17 Pro", storage: "512GB", color: "Titanium Blue", price: "$1,749" },
-    { name: "iPhone 17 Pro", storage: "1TB", color: "Titanium Blue", price: "$1,999" },
-    { name: "iPhone 17 Pro", storage: "256GB", color: "Titanium Gray", price: "$1,499" },
-    { name: "iPhone 17 Pro", storage: "512GB", color: "Titanium Gray", price: "$1,749" },
-    { name: "iPhone 17 Pro", storage: "1TB", color: "Titanium Gray", price: "$1,999" },
-    { name: "iPhone 17 Pro Max", storage: "256GB", color: "Titanium Black", price: "$1,699" },
-    { name: "iPhone 17 Pro Max", storage: "512GB", color: "Titanium Black", price: "$1,949" },
-    { name: "iPhone 17 Pro Max", storage: "1TB", color: "Titanium Black", price: "$2,199" },
-    { name: "iPhone 17 Pro Max", storage: "2TB", color: "Titanium Black", price: "$2,549" },
-    { name: "iPhone 17 Pro Max", storage: "256GB", color: "Titanium White", price: "$1,699" },
-    { name: "iPhone 17 Pro Max", storage: "512GB", color: "Titanium White", price: "$1,949" },
-    { name: "iPhone 17 mini", storage: "128GB", color: "Black", price: "$809" },
-    { name: "iPhone 17 mini", storage: "256GB", color: "Black", price: "$929" },
-    { name: "iPhone 17 mini", storage: "512GB", color: "Black", price: "$1,169" },
-    { name: "iPhone 17 mini", storage: "128GB", color: "Pink", price: "$809" },
-    { name: "iPhone 17 mini", storage: "256GB", color: "Pink", price: "$929" },
-    { name: "iPhone 17 mini", storage: "512GB", color: "Pink", price: "$1,169" },
-    { name: "iPhone 17e", storage: "128GB", color: "Black", price: "$629" },
-    { name: "iPhone 17e", storage: "256GB", color: "Black", price: "$749" },
-    { name: "iPhone 17e", storage: "128GB", color: "White", price: "$629" },
-    { name: "iPhone 17e", storage: "256GB", color: "White", price: "$749" },
-    { name: "iPhone 17e", storage: "128GB", color: "Red", price: "$629" },
-    { name: "iPhone 17e", storage: "256GB", color: "Red", price: "$749" },
-    { name: "iPhone 16", storage: "128GB", color: "Black", price: "$729" },
-    { name: "iPhone 16", storage: "256GB", color: "Black", price: "$849" },
-    { name: "iPhone 16", storage: "512GB", color: "Black", price: "$1,089" },
-    { name: "iPhone 16", storage: "128GB", color: "Teal", price: "$729" },
-    { name: "iPhone 16 Plus", storage: "128GB", color: "Black", price: "$829" },
-    { name: "iPhone 16 Plus", storage: "256GB", color: "Black", price: "$949" },
-    { name: "iPhone 16 Plus", storage: "512GB", color: "Black", price: "$1,189" },
-    { name: "iPhone 16 Plus", storage: "128GB", color: "Ultramarine", price: "$829" },
-    { name: "iPhone 16 Pro", storage: "128GB", color: "Titanium Natural", price: "$1,209" },
-    { name: "iPhone 16 Pro", storage: "256GB", color: "Titanium Natural", price: "$1,329" },
-    { name: "iPhone 16 Pro", storage: "512GB", color: "Titanium Natural", price: "$1,569" },
-    { name: "iPhone 16 Pro", storage: "128GB", color: "Titanium Desert", price: "$1,209" },
-    { name: "iPhone 16 Pro Max", storage: "256GB", color: "Titanium Black", price: "$1,449" },
-    { name: "iPhone 16 Pro Max", storage: "512GB", color: "Titanium Black", price: "$1,689" },
-    { name: "iPhone 16 Pro Max", storage: "1TB", color: "Titanium Black", price: "$1,929" },
-    { name: "iPhone 16e", storage: "128GB", color: "Black", price: "$549" },
-    { name: "iPhone 16e", storage: "256GB", color: "Black", price: "$669" },
-    { name: "iPhone 15", storage: "128GB", color: "Black", price: "$609" },
-    { name: "iPhone 15", storage: "256GB", color: "Black", price: "$729" },
-    { name: "iPhone 15 Plus", storage: "128GB", color: "Blue", price: "$699" },
-    { name: "iPhone 15 Pro", storage: "256GB", color: "Titanium Blue", price: "$1,129" },
-    { name: "iPhone 15 Pro Max", storage: "256GB", color: "Titanium Black", price: "$1,309" },
-    { name: "iPhone 14", storage: "128GB", color: "Midnight", price: "$519" },
-    { name: "iPhone 14 Plus", storage: "128GB", color: "Starlight", price: "$579" },
-    { name: "iPhone 13", storage: "128GB", color: "Pink", price: "$459" }
-];
+// Obfuscated at rest: plain product names/prices are NOT sitting in this
+// file as readable text — inspecting source/network before any scroll
+// interaction only reveals base64 gibberish, not usable product data.
+const RAW_PRODUCT_DATA_ENCODED =
+    "W3sibmFtZSI6ImlQaG9uZSAxNyIsInN0b3JhZ2UiOiIxMjhHQiIsImNvbG9yIjoiQmxhY2siLCJwcmljZSI6IiQ5OTkifSx7Im5hbWUiOiJpUGhvbmUgMTciLCJzdG9yYWdlIjoiMjU2R0IiLCJjb2xvciI6IkJsYWNrIiwicHJpY2UiOiIkMSwxNDkifSx7Im5hbWUiOiJpUGhvbmUgMTciLCJzdG9yYWdlIjoiNTEyR0IiLCJjb2xvciI6IkJsYWNrIiwicHJpY2UiOiIkMSwzOTkifSx7Im5hbWUiOiJpUGhvbmUgMTciLCJzdG9yYWdlIjoiMTI4R0IiLCJjb2xvciI6IldoaXRlIiwicHJpY2UiOiIkOTk5In0seyJuYW1lIjoiaVBob25lIDE3Iiwic3RvcmFnZSI6IjI1NkdCIiwiY29sb3IiOiJXaGl0ZSIsInByaWNlIjoiJDEsMTQ5In0seyJuYW1lIjoiaVBob25lIDE3Iiwic3RvcmFnZSI6IjUxMkdCIiwiY29sb3IiOiJXaGl0ZSIsInByaWNlIjoiJDEsMzk5In0seyJuYW1lIjoiaVBob25lIDE3IFBsdXMiLCJzdG9yYWdlIjoiMTI4R0IiLCJjb2xvciI6IkJsYWNrIiwicHJpY2UiOiIkMSwxMTkifSx7Im5hbWUiOiJpUGhvbmUgMTcgUGx1cyIsInN0b3JhZ2UiOiIyNTZHQiIsImNvbG9yIjoiQmxhY2siLCJwcmljZSI6IiQxLDI2OSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBQbHVzIiwic3RvcmFnZSI6IjUxMkdCIiwiY29sb3IiOiJCbGFjayIsInByaWNlIjoiJDEsNTE5In0seyJuYW1lIjoiaVBob25lIDE3IFBsdXMiLCJzdG9yYWdlIjoiMTI4R0IiLCJjb2xvciI6IkJsdWUiLCJwcmljZSI6IiQxLDExOSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBQbHVzIiwic3RvcmFnZSI6IjI1NkdCIiwiY29sb3IiOiJCbHVlIiwicHJpY2UiOiIkMSwyNjkifSx7Im5hbWUiOiJpUGhvbmUgMTcgUGx1cyIsInN0b3JhZ2UiOiI1MTJHQiIsImNvbG9yIjoiQmx1ZSIsInByaWNlIjoiJDEsNTE5In0seyJuYW1lIjoiaVBob25lIDE3IFBybyIsInN0b3JhZ2UiOiIyNTZHQiIsImNvbG9yIjoiVGl0YW5pdW0gQmx1ZSIsInByaWNlIjoiJDEsNDk5In0seyJuYW1lIjoiaVBob25lIDE3IFBybyIsInN0b3JhZ2UiOiI1MTJHQiIsImNvbG9yIjoiVGl0YW5pdW0gQmx1ZSIsInByaWNlIjoiJDEsNzQ5In0seyJuYW1lIjoiaVBob25lIDE3IFBybyIsInN0b3JhZ2UiOiIxVEIiLCJjb2xvciI6IlRpdGFuaXVtIEJsdWUiLCJwcmljZSI6IiQxLDk5OSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBQcm8iLCJzdG9yYWdlIjoiMjU2R0IiLCJjb2xvciI6IlRpdGFuaXVtIEdyYXkiLCJwcmljZSI6IiQxLDQ5OSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBQcm8iLCJzdG9yYWdlIjoiNTEyR0IiLCJjb2xvciI6IlRpdGFuaXVtIEdyYXkiLCJwcmljZSI6IiQxLDc0OSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBQcm8iLCJzdG9yYWdlIjoiMVRCIiwiY29sb3IiOiJUaXRhbml1bSBHcmF5IiwicHJpY2UiOiIkMSw5OTkifSx7Im5hbWUiOiJpUGhvbmUgMTcgUHJvIE1heCIsInN0b3JhZ2UiOiIyNTZHQiIsImNvbG9yIjoiVGl0YW5pdW0gQmxhY2siLCJwcmljZSI6IiQxLDY5OSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBQcm8gTWF4Iiwic3RvcmFnZSI6IjUxMkdCIiwiY29sb3IiOiJUaXRhbml1bSBCbGFjayIsInByaWNlIjoiJDEsOTQ5In0seyJuYW1lIjoiaVBob25lIDE3IFBybyBNYXgiLCJzdG9yYWdlIjoiMVRCIiwiY29sb3IiOiJUaXRhbml1bSBCbGFjayIsInByaWNlIjoiJDIsMTk5In0seyJuYW1lIjoiaVBob25lIDE3IFBybyBNYXgiLCJzdG9yYWdlIjoiMlRCIiwiY29sb3IiOiJUaXRhbml1bSBCbGFjayIsInByaWNlIjoiJDIsNTQ5In0seyJuYW1lIjoiaVBob25lIDE3IFBybyBNYXgiLCJzdG9yYWdlIjoiMjU2R0IiLCJjb2xvciI6IlRpdGFuaXVtIFdoaXRlIiwicHJpY2UiOiIkMSw2OTkifSx7Im5hbWUiOiJpUGhvbmUgMTcgUHJvIE1heCIsInN0b3JhZ2UiOiI1MTJHQiIsImNvbG9yIjoiVGl0YW5pdW0gV2hpdGUiLCJwcmljZSI6IiQxLDk0OSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBtaW5pIiwic3RvcmFnZSI6IjEyOEdCIiwiY29sb3IiOiJCbGFjayIsInByaWNlIjoiJDgwOSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBtaW5pIiwic3RvcmFnZSI6IjI1NkdCIiwiY29sb3IiOiJCbGFjayIsInByaWNlIjoiJDkyOSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBtaW5pIiwic3RvcmFnZSI6IjUxMkdCIiwiY29sb3IiOiJCbGFjayIsInByaWNlIjoiJDEsMTY5In0seyJuYW1lIjoiaVBob25lIDE3IG1pbmkiLCJzdG9yYWdlIjoiMTI4R0IiLCJjb2xvciI6IlBpbmsiLCJwcmljZSI6IiQ4MDkifSx7Im5hbWUiOiJpUGhvbmUgMTcgbWluaSIsInN0b3JhZ2UiOiIyNTZHQiIsImNvbG9yIjoiUGluayIsInByaWNlIjoiJDkyOSJ9LHsibmFtZSI6ImlQaG9uZSAxNyBtaW5pIiwic3RvcmFnZSI6IjUxMkdCIiwiY29sb3IiOiJQaW5rIiwicHJpY2UiOiIkMSwxNjkifSx7Im5hbWUiOiJpUGhvbmUgMTdlIiwic3RvcmFnZSI6IjEyOEdCIiwiY29sb3IiOiJCbGFjayIsInByaWNlIjoiJDYyOSJ9LHsibmFtZSI6ImlQaG9uZSAxN2UiLCJzdG9yYWdlIjoiMjU2R0IiLCJjb2xvciI6IkJsYWNrIiwicHJpY2UiOiIkNzQ5In0seyJuYW1lIjoiaVBob25lIDE3ZSIsInN0b3JhZ2UiOiIxMjhHQiIsImNvbG9yIjoiV2hpdGUiLCJwcmljZSI6IiQ2MjkifSx7Im5hbWUiOiJpUGhvbmUgMTdlIiwic3RvcmFnZSI6IjI1NkdCIiwiY29sb3IiOiJXaGl0ZSIsInByaWNlIjoiJDc0OSJ9LHsibmFtZSI6ImlQaG9uZSAxN2UiLCJzdG9yYWdlIjoiMTI4R0IiLCJjb2xvciI6IlJlZCIsInByaWNlIjoiJDYyOSJ9LHsibmFtZSI6ImlQaG9uZSAxN2UiLCJzdG9yYWdlIjoiMjU2R0IiLCJjb2xvciI6IlJlZCIsInByaWNlIjoiJDc0OSJ9LHsibmFtZSI6ImlQaG9uZSAxNiIsInN0b3JhZ2UiOiIxMjhHQiIsImNvbG9yIjoiQmxhY2siLCJwcmljZSI6IiQ3MjkifSx7Im5hbWUiOiJpUGhvbmUgMTYiLCJzdG9yYWdlIjoiMjU2R0IiLCJjb2xvciI6IkJsYWNrIiwicHJpY2UiOiIkODQ5In0seyJuYW1lIjoiaVBob25lIDE2Iiwic3RvcmFnZSI6IjUxMkdCIiwiY29sb3IiOiJCbGFjayIsInByaWNlIjoiJDEsMDg5In0seyJuYW1lIjoiaVBob25lIDE2Iiwic3RvcmFnZSI6IjEyOEdCIiwiY29sb3IiOiJUZWFsIiwicHJpY2UiOiIkNzI5In0seyJuYW1lIjoiaVBob25lIDE2IFBsdXMiLCJzdG9yYWdlIjoiMTI4R0IiLCJjb2xvciI6IkJsYWNrIiwicHJpY2UiOiIkODI5In0seyJuYW1lIjoiaVBob25lIDE2IFBsdXMiLCJzdG9yYWdlIjoiMjU2R0IiLCJjb2xvciI6IkJsYWNrIiwicHJpY2UiOiIkOTQ5In0seyJuYW1lIjoiaVBob25lIDE2IFBsdXMiLCJzdG9yYWdlIjoiNTEyR0IiLCJjb2xvciI6IkJsYWNrIiwicHJpY2UiOiIkMSwxODkifSx7Im5hbWUiOiJpUGhvbmUgMTYgUGx1cyIsInN0b3JhZ2UiOiIxMjhHQiIsImNvbG9yIjoiVWx0cmFtYXJpbmUiLCJwcmljZSI6IiQ4MjkifSx7Im5hbWUiOiJpUGhvbmUgMTYgUHJvIiwic3RvcmFnZSI6IjEyOEdCIiwiY29sb3IiOiJUaXRhbml1bSBOYXR1cmFsIiwicHJpY2UiOiIkMSwyMDkifSx7Im5hbWUiOiJpUGhvbmUgMTYgUHJvIiwic3RvcmFnZSI6IjI1NkdCIiwiY29sb3IiOiJUaXRhbml1bSBOYXR1cmFsIiwicHJpY2UiOiIkMSwzMjkifSx7Im5hbWUiOiJpUGhvbmUgMTYgUHJvIiwic3RvcmFnZSI6IjUxMkdCIiwiY29sb3IiOiJUaXRhbml1bSBOYXR1cmFsIiwicHJpY2UiOiIkMSw1NjkifSx7Im5hbWUiOiJpUGhvbmUgMTYgUHJvIiwic3RvcmFnZSI6IjEyOEdCIiwiY29sb3IiOiJUaXRhbml1bSBEZXNlcnQiLCJwcmljZSI6IiQxLDIwOSJ9LHsibmFtZSI6ImlQaG9uZSAxNiBQcm8gTWF4Iiwic3RvcmFnZSI6IjI1NkdCIiwiY29sb3IiOiJUaXRhbml1bSBCbGFjayIsInByaWNlIjoiJDEsNDQ5In0seyJuYW1lIjoiaVBob25lIDE2IFBybyBNYXgiLCJzdG9yYWdlIjoiNTEyR0IiLCJjb2xvciI6IlRpdGFuaXVtIEJsYWNrIiwicHJpY2UiOiIkMSw2ODkifSx7Im5hbWUiOiJpUGhvbmUgMTYgUHJvIE1heCIsInN0b3JhZ2UiOiIxVEIiLCJjb2xvciI6IlRpdGFuaXVtIEJsYWNrIiwicHJpY2UiOiIkMSw5MjkifSx7Im5hbWUiOiJpUGhvbmUgMTZlIiwic3RvcmFnZSI6IjEyOEdCIiwiY29sb3IiOiJCbGFjayIsInByaWNlIjoiJDU0OSJ9LHsibmFtZSI6ImlQaG9uZSAxNmUiLCJzdG9yYWdlIjoiMjU2R0IiLCJjb2xvciI6IkJsYWNrIiwicHJpY2UiOiIkNjY5In0seyJuYW1lIjoiaVBob25lIDE1Iiwic3RvcmFnZSI6IjEyOEdCIiwiY29sb3IiOiJCbGFjayIsInByaWNlIjoiJDYwOSJ9LHsibmFtZSI6ImlQaG9uZSAxNSIsInN0b3JhZ2UiOiIyNTZHQiIsImNvbG9yIjoiQmxhY2siLCJwcmljZSI6IiQ3MjkifSx7Im5hbWUiOiJpUGhvbmUgMTUgUGx1cyIsInN0b3JhZ2UiOiIxMjhHQiIsImNvbG9yIjoiQmx1ZSIsInByaWNlIjoiJDY5OSJ9LHsibmFtZSI6ImlQaG9uZSAxNSBQcm8iLCJzdG9yYWdlIjoiMjU2R0IiLCJjb2xvciI6IlRpdGFuaXVtIEJsdWUiLCJwcmljZSI6IiQxLDEyOSJ9LHsibmFtZSI6ImlQaG9uZSAxNSBQcm8gTWF4Iiwic3RvcmFnZSI6IjI1NkdCIiwiY29sb3IiOiJUaXRhbml1bSBCbGFjayIsInByaWNlIjoiJDEsMzA5In0seyJuYW1lIjoiaVBob25lIDE0Iiwic3RvcmFnZSI6IjEyOEdCIiwiY29sb3IiOiJNaWRuaWdodCIsInByaWNlIjoiJDUxOSJ9LHsibmFtZSI6ImlQaG9uZSAxNCBQbHVzIiwic3RvcmFnZSI6IjEyOEdCIiwiY29sb3IiOiJTdGFybGlnaHQiLCJwcmljZSI6IiQ1NzkifSx7Im5hbWUiOiJpUGhvbmUgMTMiLCJzdG9yYWdlIjoiMTI4R0IiLCJjb2xvciI6IlBpbmsiLCJwcmljZSI6IiQ0NTkifV0=";
+const RAW_PRODUCT_DATA = JSON.parse(
+    decodeURIComponent(escape(atob(RAW_PRODUCT_DATA_ENCODED)))
+);
 
 function buildRawItem(index) {
     const base = RAW_PRODUCT_DATA[index];
@@ -135,18 +49,6 @@ function generateBatch(page, batchIndex) {
     );
 }
 
-// Each cell only reveals its data once it's genuinely been scrolled
-// into the real page viewport (root: null — the actual document
-// viewport, not a bounded mini scrollbox). A scraper agent has to
-// actually scroll the page to reach items further down, same as a
-// real user would.
-//
-// STRICT GATE: this cell will not reveal anything — not even if it's
-// already sitting in the viewport at mount time — until the parent
-// tells it a genuine scroll gesture (`userHasScrolled`) has happened.
-// Only after that gate opens do we run the usual logic: a synchronous
-// "already visible" check for instant reveal, and an
-// IntersectionObserver for anything still below the fold.
 function LazyCell({ index, encoded, userHasScrolled }) {
     const cellRef = useRef(null);
     const [data, setData] = useState(null);
@@ -154,11 +56,7 @@ function LazyCell({ index, encoded, userHasScrolled }) {
     useEffect(() => {
         if (!cellRef.current) return;
         if (data) return;
-
-        // Hard gate: no genuine scroll gesture has happened yet, so this
-        // item stays a skeleton no matter where it sits on screen. Just
-        // opening/mounting the page is not enough by itself.
-        if (!userHasScrolled) return;
+        if (!userHasScrolled) return; // hard gate
 
         function reveal(reason) {
             setData(decodeItem(encoded));
@@ -170,8 +68,6 @@ function LazyCell({ index, encoded, userHasScrolled }) {
             });
         }
 
-        // Once the gate is open: synchronous check first — catches
-        // anything already in the viewport, no extra async delay.
         const rect = cellRef.current.getBoundingClientRect();
         const alreadyVisible =
             rect.top < (window.innerHeight || document.documentElement.clientHeight) &&
@@ -181,11 +77,9 @@ function LazyCell({ index, encoded, userHasScrolled }) {
 
         if (alreadyVisible) {
             reveal("was in view once a genuine scroll gesture unlocked it");
-            return; // no need to set up an observer for this one
+            return;
         }
 
-        // otherwise, this item is genuinely below the fold — wait for
-        // a real scroll to bring it into view before revealing it
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
@@ -194,7 +88,7 @@ function LazyCell({ index, encoded, userHasScrolled }) {
                     }
                 });
             },
-            { root: null, threshold: 0.4 } // root: null = the actual page/document viewport
+            { root: null, threshold: 0.4 }
         );
         observer.observe(cellRef.current);
         return () => observer.disconnect();
@@ -216,23 +110,12 @@ function LazyCell({ index, encoded, userHasScrolled }) {
 }
 
 function ScrollLazyLoad() {
-    // anchor at the top of this whole fixture — used to reset scroll
-    // position back here whenever the page (1/2/3) changes, so the
-    // new page's first batch always starts out visible & reachable
     const topRef = useRef(null);
     const isFirstRender = useRef(true);
-
-    // STRICT SCROLL GATE STATE: starts closed. Only a genuine user
-    // gesture — a real "wheel" or "touchmove" event dispatched by the
-    // browser itself — opens it, permanently until the next page
-    // change. Programmatic scrolling (like the page-change
-    // scrollIntoView below) does NOT dispatch wheel/touchmove events,
-    // so it can never accidentally open this gate on its own.
     const [userHasScrolled, setUserHasScrolled] = useState(false);
 
     useEffect(() => {
         if (userHasScrolled) return;
-
         function openGate() {
             setUserHasScrolled(true);
             window.ScrapeBenchConsole.log({
@@ -242,7 +125,6 @@ function ScrollLazyLoad() {
                 isEvent: true
             });
         }
-
         window.addEventListener("wheel", openGate, { passive: true, once: true });
         window.addEventListener("touchmove", openGate, { passive: true, once: true });
         return () => {
@@ -265,27 +147,13 @@ function ScrollLazyLoad() {
         setBatches([generateBatch(page, 0)]);
         setLoadMoreClicks(0);
 
-        // Skip on the very first mount (page load) — the browser already
-        // starts scrolled to the top of the document, no need to jump.
-        // On every SUBSEQUENT page change (Prev/Next click, or browser
-        // back/forward), scroll back to the top of this section so the
-        // new page's shorter batch list isn't left stranded below
-        // whatever scroll offset the old, taller page had.
-        //
-        // NOTE: this scrollIntoView call is programmatic, so it does NOT
-        // dispatch a "wheel"/"touchmove" event and therefore never opens
-        // the strict scroll gate above by itself.
         if (isFirstRender.current) {
             isFirstRender.current = false;
         } else {
             if (topRef.current) {
                 topRef.current.scrollIntoView({ behavior: "auto", block: "start" });
             }
-            // RE-ARM the gate on every page change: even though the user
-            // already proved they can scroll on a previous page, this new
-            // page's items stay locked until a fresh genuine scroll
-            // gesture happens again on THIS page.
-            setUserHasScrolled(false);
+            setUserHasScrolled(false); // re-arm gate on every page change
             window.ScrapeBenchConsole.log({
                 method: "EVT",
                 text: `/case/scroll-lazy — page changed, scroll gate re-armed for page ${page}`,
@@ -337,9 +205,6 @@ function ScrollLazyLoad() {
     const canGoPrevious = page > 1;
     const canGoNext = page < MAX_PAGE;
 
-    // NOTE: no ".panel" wrapper, no bordered/boxed container. This
-    // renders straight into the normal page flow — the grid below is
-    // just regular content on the page, not a self-contained widget.
     return (
         <div ref={topRef}>
             <p className="case-meta" style={{ marginBottom: 12 }}>
