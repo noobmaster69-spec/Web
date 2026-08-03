@@ -2,9 +2,9 @@
 // STRICT SCROLL GATE: no item — not even one that happens to already
 // sit inside the viewport the instant it mounts — reveals its data
 // until the user has performed at least one genuine scroll gesture
-// (a real "wheel" or "touchmove" event on the window). Merely opening
-// / mounting the page is NOT enough anymore. The gate re-arms on every
-// page change (Prev/Next), so each page needs its own fresh scroll.
+// (a real "wheel" or "touchmove" event on the window). The gate
+// re-arms on every page change (Prev/Next), so each page needs its
+// own fresh scroll.
 const { useState, useEffect, useRef, useCallback } = React;
 
 const ITEMS_PER_BATCH = 5;
@@ -21,6 +21,13 @@ const RAW_PRODUCT_DATA_ENCODED =
 const RAW_PRODUCT_DATA = JSON.parse(
     decodeURIComponent(escape(atob(RAW_PRODUCT_DATA_ENCODED)))
 );
+
+// Live registry of every item that has genuinely been revealed so far,
+// keyed by item id. Starts empty, grows in real time as items pass the
+// scroll gate + intersection check below. This is a REAL JS object —
+// read window.ScrapeBenchRevealedData directly (e.g. via CDP evaluate)
+// to get exactly what's been revealed "for real" up to that point.
+window.ScrapeBenchRevealedData = window.ScrapeBenchRevealedData || {};
 
 function buildRawItem(index) {
     const base = RAW_PRODUCT_DATA[index];
@@ -59,7 +66,9 @@ function LazyCell({ index, encoded, userHasScrolled }) {
         if (!userHasScrolled) return; // hard gate
 
         function reveal(reason) {
-            setData(decodeItem(encoded));
+            const decoded = decodeItem(encoded);
+            setData(decoded);
+            window.ScrapeBenchRevealedData[decoded.id] = decoded;
             window.ScrapeBenchConsole.log({
                 method: "EVT",
                 text: `/case/scroll-lazy — item #${index + 1} ${reason} & decoded`,
