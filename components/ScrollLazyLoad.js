@@ -9,9 +9,18 @@
 // to reveal further items, and later pages only load after Prev/Next
 // is clicked. A scraper/agent has to actually perform these actions
 // (scroll, click Load more, click Next) to reach all 60 items — same
-// as a real user would. Items already visible on initial load decode
-// immediately via a synchronous check, so there's no false-negative
-// timing race against the observer's async callback.
+// as a real user would.
+//
+// STRICT SCROLL GATE: no item — not even one that happens to already
+// sit inside the viewport the instant it mounts — reveals its data
+// until the user has performed at least one genuine scroll gesture
+// (a real "wheel" or "touchmove" event on the window). Merely opening
+// / mounting the page is NOT enough anymore. Once that first genuine
+// scroll gesture has been observed, items already in view reveal
+// immediately (no need to scroll each one individually into view),
+// and items below the fold still reveal only once actually scrolled
+// into the real page viewport via IntersectionObserver — same as
+// before.
 //
 // FIX: when the page changes (Prev/Next), the browser's scroll
 // position used to stay wherever it was — but batches reset to just
@@ -19,9 +28,9 @@
 // scroll offset can land past the new content, leaving the new
 // page's first batch stuck as an undiscovered skeleton. Now the view
 // scrolls back to the top of this section on every page change, so
-// the new page's first batch is immediately visible and decodes
-// right away (same "already visible -> instant reveal" rule as on
-// initial mount) — keeping every item reliably reachable by scroll.
+// the new page's first batch is immediately visible (and, once the
+// scroll gate has been unlocked at least once, decodes right away) —
+// keeping every item reliably reachable by scroll.
 //
 // Total data: 60 items across 3 pages (20 items/page).
 // Each page: initial batch of 5 items, then "Load more" can be
@@ -132,25 +141,24 @@ function generateBatch(page, batchIndex) {
 // actually scroll the page to reach items further down, same as a
 // real user would.
 //
-// IntersectionObserver callbacks are asynchronous by spec — they
-// don't fire the instant an element mounts, only on a later
-// layout/idle pass. If a scraper's headless browser snapshots the
-// DOM extremely quickly after load (before that first async callback
-// runs), an item that's ALREADY inside the viewport on page load
-// could still be caught mid-skeleton, purely due to that timing
-// race, not because the agent failed to scroll. To avoid that false
-// negative, this does one synchronous getBoundingClientRect() check
-// right on mount: if the cell is already visible at that instant, it
-// decodes immediately, no async wait involved. Items genuinely below
-// the fold still rely on the observer firing once they're scrolled
-// into view for real — so the scroll requirement stays genuine for
-// those.
-function LazyCell({ index, encoded }) {
+// STRICT GATE: this cell will not reveal anything — not even if it's
+// already sitting in the viewport at mount time — until the parent
+// tells it a genuine scroll gesture (`userHasScrolled`) has happened.
+// Only after that gate opens do we run the usual logic: a synchronous
+// "already visible" check for instant reveal, and an
+// IntersectionObserver for anything still below the fold.
+function LazyCell({ index, encoded, userHasScrolled }) {
     const cellRef = useRef(null);
     const [data, setData] = useState(null);
 
     useEffect(() => {
         if (!cellRef.current) return;
+        if (data) return;
+
+        // Hard gate: no genuine scroll gesture has happened yet, so this
+        // item stays a skeleton no matter where it sits on screen. Just
+        // opening/mounting the page is not enough by itself.
+        if (!userHasScrolled) return;
 
         function reveal(reason) {
             setData(decodeItem(encoded));
@@ -162,8 +170,8 @@ function LazyCell({ index, encoded }) {
             });
         }
 
-        // synchronous check first — catches anything already in the
-        // viewport on the very first paint, no async delay involved
+        // Once the gate is open: synchronous check first — catches
+        // anything already in the viewport, no extra async delay.
         const rect = cellRef.current.getBoundingClientRect();
         const alreadyVisible =
             rect.top < (window.innerHeight || document.documentElement.clientHeight) &&
@@ -172,7 +180,7 @@ function LazyCell({ index, encoded }) {
             rect.right > 0;
 
         if (alreadyVisible) {
-            reveal("was already in the initial viewport on mount");
+            reveal("was in view once a genuine scroll gesture unlocked it");
             return; // no need to set up an observer for this one
         }
 
@@ -190,7 +198,7 @@ function LazyCell({ index, encoded }) {
         );
         observer.observe(cellRef.current);
         return () => observer.disconnect();
-    }, [data, encoded, index]);
+    }, [data, encoded, index, userHasScrolled]);
 
     if (!data) {
         return (
@@ -214,6 +222,35 @@ function ScrollLazyLoad() {
     const topRef = useRef(null);
     const isFirstRender = useRef(true);
 
+    // STRICT SCROLL GATE STATE: starts closed. Only a genuine user
+    // gesture — a real "wheel" or "touchmove" event dispatched by the
+    // browser itself — opens it, permanently until the next page
+    // change. Programmatic scrolling (like the page-change
+    // scrollIntoView below) does NOT dispatch wheel/touchmove events,
+    // so it can never accidentally open this gate on its own.
+    const [userHasScrolled, setUserHasScrolled] = useState(false);
+
+    useEffect(() => {
+        if (userHasScrolled) return;
+
+        function openGate() {
+            setUserHasScrolled(true);
+            window.ScrapeBenchConsole.log({
+                method: "EVT",
+                text: "/case/scroll-lazy — genuine scroll gesture detected, gate opened",
+                status: "ok",
+                isEvent: true
+            });
+        }
+
+        window.addEventListener("wheel", openGate, { passive: true, once: true });
+        window.addEventListener("touchmove", openGate, { passive: true, once: true });
+        return () => {
+            window.removeEventListener("wheel", openGate);
+            window.removeEventListener("touchmove", openGate);
+        };
+    }, [userHasScrolled]);
+
     const getPageFromUrl = () => {
         const params = new URLSearchParams(window.location.search);
         const p = parseInt(params.get("page"), 10);
@@ -234,10 +271,27 @@ function ScrollLazyLoad() {
         // back/forward), scroll back to the top of this section so the
         // new page's shorter batch list isn't left stranded below
         // whatever scroll offset the old, taller page had.
+        //
+        // NOTE: this scrollIntoView call is programmatic, so it does NOT
+        // dispatch a "wheel"/"touchmove" event and therefore never opens
+        // the strict scroll gate above by itself.
         if (isFirstRender.current) {
             isFirstRender.current = false;
-        } else if (topRef.current) {
-            topRef.current.scrollIntoView({ behavior: "auto", block: "start" });
+        } else {
+            if (topRef.current) {
+                topRef.current.scrollIntoView({ behavior: "auto", block: "start" });
+            }
+            // RE-ARM the gate on every page change: even though the user
+            // already proved they can scroll on a previous page, this new
+            // page's items stay locked until a fresh genuine scroll
+            // gesture happens again on THIS page.
+            setUserHasScrolled(false);
+            window.ScrapeBenchConsole.log({
+                method: "EVT",
+                text: `/case/scroll-lazy — page changed, scroll gate re-armed for page ${page}`,
+                status: "ok",
+                isEvent: true
+            });
         }
     }, [page]);
 
@@ -290,6 +344,7 @@ function ScrollLazyLoad() {
         <div ref={topRef}>
             <p className="case-meta" style={{ marginBottom: 12 }}>
                 lazy load → load more → pagination (page {page}/{MAX_PAGE})
+                {!userHasScrolled && " · waiting for a genuine scroll gesture…"}
             </p>
 
             {batches.map((batch, batchIndex) => (
@@ -307,6 +362,7 @@ function ScrollLazyLoad() {
                             key={i}
                             index={batchIndex * ITEMS_PER_BATCH + i}
                             encoded={encoded}
+                            userHasScrolled={userHasScrolled}
                         />
                     ))}
                 </div>
@@ -334,11 +390,12 @@ function ScrollLazyLoad() {
             </div>
 
             <div className="hint">
-                Items already visible on load decode immediately; items further down only reveal their data once
-                genuinely scrolled into view (no inner scrollbox — this uses the real page viewport as the
-                trigger). "Load more" can be clicked {MAX_LOAD_MORE_CLICKS} times (total {ITEMS_PER_PAGE} items
-                per page), after which it becomes "Previous"/"Next" to switch pages via the URL <code>?page=</code>.
-                {TOTAL_ITEMS} items total across {MAX_PAGE} pages.
+                Nothing decodes until a genuine scroll gesture (wheel/touch) has happened at least once — simply
+                opening the page is not enough. After that, items already visible decode immediately; items
+                further down only reveal their data once genuinely scrolled into view (no inner scrollbox — this
+                uses the real page viewport as the trigger). "Load more" can be clicked {MAX_LOAD_MORE_CLICKS}{" "}
+                times (total {ITEMS_PER_PAGE} items per page), after which it becomes "Previous"/"Next" to switch
+                pages via the URL <code>?page=</code>. {TOTAL_ITEMS} items total across {MAX_PAGE} pages.
             </div>
         </div>
     );
