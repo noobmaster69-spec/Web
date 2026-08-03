@@ -22,13 +22,6 @@ const RAW_PRODUCT_DATA = JSON.parse(
     decodeURIComponent(escape(atob(RAW_PRODUCT_DATA_ENCODED)))
 );
 
-// Live registry of every item that has genuinely been revealed so far,
-// keyed by item id. Starts empty, grows in real time as items pass the
-// scroll gate + intersection check below. This is a REAL JS object —
-// read window.ScrapeBenchRevealedData directly (e.g. via CDP evaluate)
-// to get exactly what's been revealed "for real" up to that point.
-window.ScrapeBenchRevealedData = window.ScrapeBenchRevealedData || {};
-
 function buildRawItem(index) {
     const base = RAW_PRODUCT_DATA[index];
     const page = Math.floor(index / ITEMS_PER_PAGE) + 1;
@@ -39,6 +32,12 @@ function buildRawItem(index) {
         page
     };
 }
+
+// NEW: seluruh RAW_PRODUCT_DATA di-parse jadi array of JS object penuh
+// (bukan raw name/storage/color lagi, tapi objek final siap-tampil).
+// Ini murni struktur data di memory — tidak pernah langsung dipakai
+// untuk render/reveal apapun; tetap harus lewat encodeItem() + scroll-gate.
+const ALL_PRODUCT_ITEMS = RAW_PRODUCT_DATA.map((_, index) => buildRawItem(index));
 
 function encodeItem(obj) {
     return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
@@ -52,9 +51,19 @@ function generateBatch(page, batchIndex) {
     const pageStart = (page - 1) * ITEMS_PER_PAGE;
     const batchStart = pageStart + batchIndex * ITEMS_PER_BATCH;
     return Array.from({ length: ITEMS_PER_BATCH }, (_, i) =>
-        encodeItem(buildRawItem(batchStart + i))
+        encodeItem(ALL_PRODUCT_ITEMS[batchStart + i])
     );
 }
+
+// Live registry of every item that has genuinely been revealed so far,
+// keyed by item id — bagus buat lookup cepat by id.
+window.ScrapeBenchRevealedData = window.ScrapeBenchRevealedData || {};
+
+// NEW: array of objects — ini yang dipakai buat SCRAPE.
+// Setiap item ke-reveal, objek hasil parse-nya di-push ke sini juga.
+// Jadi window.ScrapeBenchRevealedList selalu berupa array of parsed objects,
+// urut sesuai urutan reveal-nya (bukan keyed object).
+window.ScrapeBenchRevealedList = window.ScrapeBenchRevealedList || [];
 
 function LazyCell({ index, encoded, userHasScrolled }) {
     const cellRef = useRef(null);
@@ -69,6 +78,9 @@ function LazyCell({ index, encoded, userHasScrolled }) {
             const decoded = decodeItem(encoded);
             setData(decoded);
             window.ScrapeBenchRevealedData[decoded.id] = decoded;
+            if (!window.ScrapeBenchRevealedList.some((it) => it.id === decoded.id)) {
+                window.ScrapeBenchRevealedList.push(decoded);
+            }
             window.ScrapeBenchConsole.log({
                 method: "EVT",
                 text: `/case/scroll-lazy — item #${index + 1} ${reason} & decoded`,
