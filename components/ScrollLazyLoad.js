@@ -148,6 +148,7 @@ function ScrollLazyLoad() {
         }
         window.addEventListener("wheel", openGate, { passive: true, once: true });
         window.addEventListener("touchmove", openGate, { passive: true, once: true });
+        window.addEventListener("scroll", openGate, { passive: true, once: true }); 
         return () => {
             window.removeEventListener("wheel", openGate);
             window.removeEventListener("touchmove", openGate);
