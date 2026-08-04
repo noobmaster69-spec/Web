@@ -24,7 +24,7 @@ function LiveCounter() {
             <div id="live-counter" className="counter-display">
                 {now.toLocaleTimeString("id-ID")}
             </div>
-            <p className="case-meta" style={{ marginTop: 8 }}>{ticks} ticks sejak halaman dimuat</p>
+            <p className="case-meta" style={{ marginTop: 8 }}>{ticks} since the page is open</p>
             <div className="hint">
              <code>#live-counter</code>
             </div>
