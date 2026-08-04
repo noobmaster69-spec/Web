@@ -1,66 +1,120 @@
 // Test case: "cookies"
-// Set cookie di mount, konten #cookie-gated-content cuma muncul kalau cookie ada.
-const { useState, useEffect } = React;
-const COOKIE_NAME = "scrapebench_session";
-
-function readCookie(name) {
-    const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
-    return match ? decodeURIComponent(match[1]) : null;
-}
-
-function CookieDemo() {
-    const [cookieValue, setCookieValue] = useState(null);
-
-    useEffect(() => {
-        const existing = readCookie(COOKIE_NAME);
-        if (existing) {
-            setCookieValue(existing);
-            return;
+// Sets a cookie on mount; #cookie-gated-content only shows up if the cookie exists.
+(function () {
+    const { useState, useEffect, useCallback } = React;
+    const COOKIE_NAME = "scrapebench_session";
+    const MAX_AGE_SECONDS = 3600; // 1 hour
+    // Escape regex special characters so the cookie name is safe to use inside a RegExp.
+    function escapeRegExp(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+    // Read a cookie by name. Returns null if missing, or if document.cookie
+    // can't be accessed (e.g. strict privacy mode / sandboxed iframe).
+    function readCookie(name) {
+        try {
+            const pattern = new RegExp("(?:^|; )" + escapeRegExp(name) + "=([^;]*)");
+            const match = document.cookie.match(pattern);
+            return match ? decodeURIComponent(match[1]) : null;
+        } catch (err) {
+            console.warn("ScrapeBench: failed to read cookie", err);
+            return null;
         }
-        const token = "tok_" + Math.random().toString(36).slice(2, 10);
-        document.cookie = `${COOKIE_NAME}=${token}; path=/; max-age=3600`;
-        setCookieValue(token);
-        window.ScrapeBenchConsole.log({
-            method: "SET",
-            text: `/case/cookie — Set-Cookie: ${COOKIE_NAME}=${token}`,
-            status: "ok"
-        });
-    }, []);
-
-    function clearCookie() {
-        document.cookie = `${COOKIE_NAME}=; path=/; max-age=0`;
-        setCookieValue(null);
-        window.ScrapeBenchConsole.log({
-            method: "DEL",
-            text: `/case/cookie — ${COOKIE_NAME} dihapus`,
-            status: "bad"
-        });
+    }
+    // Generate a token using the crypto API when available (more random),
+    // falling back to Math.random otherwise.
+    function generateToken() {
+        if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+            const bytes = window.crypto.getRandomValues(new Uint8Array(12));
+            return "tok_" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+        }
+        return "tok_" + Math.random().toString(36).slice(2, 10);
     }
 
-    return (
-        <div className="panel">
-            <h3>Cookie: {COOKIE_NAME}</h3>
-            {cookieValue ? (
-                <div>
-                    <p className="mono" style={{ fontSize: 13 }}>
-                        value: <span style={{ color: "var(--ok)" }}>{cookieValue}</span>
-                    </p>
-                    <div id="cookie-gated-content" className="product-card" style={{ marginTop: 12 }}>
-                        <div className="name">Members price — iPhone 17</div>
-                        <div className="price">Rp 13.999.000</div>
-                    </div>
-                </div>
-            ) : (
-                <div className="chip warn">no cookie — harga terkunci disembunyikan</div>
-            )}
-            <button className="btn" style={{ marginTop: 16 }} onClick={clearCookie}>
-                Clear cookie
-            </button>
-            <div className="hint">
-                 <code>{COOKIE_NAME}</code> via request, <code>#cookie-gated-content</code>
-            </div>
-        </div>
-    );
-}
+    // Set the cookie with sensible attributes: SameSite=Lax, and Secure
+    // automatically enabled when the page is served over HTTPS.
+    function writeCookie(name, value, maxAgeSeconds) {
+        const secure = window.location.protocol === "https:" ? "; Secure" : "";
+        document.cookie =
+            `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax${secure}`;
+    }
 
-window.ScrapeBenchComponents.CookieDemo = CookieDemo;
+    function deleteCookie(name) {
+        document.cookie = `${name}=; path=/; max-age=0`;
+    }
+
+    function CookieDemo() {
+        const [cookieValue, setCookieValue] = useState(null);
+
+        useEffect(() => {
+            const existing = readCookie(COOKIE_NAME);
+            if (existing) {
+                setCookieValue(existing);
+                window.ScrapeBenchConsole.log({
+                    method: "GET",
+                    text: `/case/cookie — cookie ${COOKIE_NAME} found, reusing it`,
+                    status: "ok"
+                });
+                return;
+            }
+
+            const token = generateToken();
+            writeCookie(COOKIE_NAME, token, MAX_AGE_SECONDS);
+            setCookieValue(token);
+            window.ScrapeBenchConsole.log({
+                method: "SET",
+                text: `/case/cookie — Set-Cookie: ${COOKIE_NAME}=${token}`,
+                status: "ok"
+            });
+        }, []);
+
+        const clearCookie = useCallback(() => {
+            deleteCookie(COOKIE_NAME);
+            setCookieValue(null);
+            window.ScrapeBenchConsole.log({
+                method: "DEL",
+                text: `/case/cookie — ${COOKIE_NAME} deleted`,
+                status: "bad"
+            });
+        }, []);
+
+        return (
+            <div className="panel">
+                <h3>Cookie: {COOKIE_NAME}</h3>
+                {cookieValue ? (
+                    <div>
+                        <p className="mono" style={{ fontSize: 13 }}>
+                            value: <span style={{ color: "var(--ok)" }}>{cookieValue}</span>
+                        </p>
+                        <div
+                            id="cookie-gated-content"
+                            className="product-card"
+                            style={{ marginTop: 12 }}
+                            aria-live="polite"
+                        >
+                            <div className="name">Members price — iPhone 17</div>
+                            <div className="price">Rp 13.999.000</div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="chip warn" role="status">
+                        no cookie — locked price is hidden
+                    </div>
+                )}
+                <button
+                    className="btn"
+                    style={{ marginTop: 16 }}
+                    onClick={clearCookie}
+                    disabled={!cookieValue}
+                >
+                    Clear cookie
+                </button>
+                <div className="hint">
+                    Resend the <code>{COOKIE_NAME}</code> cookie via request to see{" "}
+                    <code>#cookie-gated-content</code>.
+                </div>
+            </div>
+        );
+    }
+
+    window.ScrapeBenchComponents.CookieDemo = CookieDemo;
+})();
